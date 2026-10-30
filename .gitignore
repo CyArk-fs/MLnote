@@ -1,6 +1,6 @@
-# LaTeX 编译中间产物（PDF 保留，随源码一起提交）
-build/*
-!build/*.pdf
+# LaTeX 编译中间产物（PDF 保留，统一放在 pdf/ 便于查找）
+pdf/*
+!pdf/*.pdf
 *.aux
 *.log
 *.out

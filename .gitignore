@@ -1,0 +1,11 @@
+# LaTeX 编译中间产物（PDF 保留，随源码一起提交）
+build/*
+!build/*.pdf
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.xdv
+*.synctex.gz

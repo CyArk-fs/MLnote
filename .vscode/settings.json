@@ -1,5 +1,6 @@
 {
   "latex-workshop.latex.outDir": "%DIR%/pdf",
+  "latex-workshop.latex.autoBuild.run": "never",
   "latex-workshop.latex.build.enableMagicComments": false,
   "latex-workshop.latex.recipe.default": "latexmk-xelatex",
   "latex-workshop.latex.recipes": [

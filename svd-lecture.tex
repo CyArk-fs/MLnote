@@ -818,7 +818,46 @@ $V$ 的尺寸 & $n\times n$ & $n\times r$ & $n\times k$ \\
   A=\begin{pmatrix}1&0\\0&1\\1&1\end{pmatrix}\in\R^{3\times2}.
 \end{equation}
 
+$U$、$\Sigma$、$V$ 三个矩阵全是未知量，直接解方程无从下手。通用的做法是
+\textbf{先假设分解已经成立，倒推出它必须满足什么}，再把倒推出的条件当作计算步骤。
+
+设 $A=U\Sigma V\T$ 成立。两边右乘第 $i$ 个右奇异向量 $\vv_i$，利用 $V\T\vv_i=\mathbf{e}_i$：
+\begin{equation}\label{eq:key-relation}
+  A\vv_i=U\Sigma\mathbf{e}_i=\sigma_i\bu_i .
+\end{equation}
+这是整件事的核心关系：\textbf{$A$ 把 $\vv_i$ 映成 $\sigma_i\bu_i$}——方向不变，
+长度被拉伸 $\sigma_i$ 倍。再在式 \eqref{eq:key-relation} 两边左乘 $A\T$，
+并代入 $A\T=V\Sigma\T U\T$：
+\begin{equation}\label{eq:key-eigen}
+  A\T A\vv_i=\sigma_i A\T\bu_i
+  =\sigma_i V\Sigma\T U\T\bu_i
+  =\sigma_i V\Sigma\T\mathbf{e}_i
+  =\sigma_i^2\vv_i .
+\end{equation}
+这一步把 $U$ 完全消掉，只剩下关于 $A$ 本身的式子。
+
+\begin{keybox}[倒推出的三个必要条件]
+如果 $A=U\Sigma V\T$ 真的成立，那么
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt, topsep=2pt]
+  \item $\vv_i$ 必须是 $A\T A$ 的特征向量——是 $A\T A$，不是 $A$；
+  \item 相应的特征值必须是 $\sigma_i^2$，即奇异值是特征值开平方；
+  \item $\bu_i=A\vv_i/\sigma_i$，由式 \textcolor{white}{(\ref*{eq:key-relation})} 直接解出。
+\end{enumerate}
+\end{keybox}
+
+三个未知量于是都有了着落，剩下的只是按依赖顺序执行：
+算 $A\T A$（第 1 步）$\to$ 求特征值（第 2 步）与特征向量（第 3 步）$\to$
+开平方得 $\sigma_i$（第 4 步）$\to$ 回代得 $\bu_i$（第 5 步）$\to$
+补齐 $U$ 剩下的一列（第 6 步）$\to$ 验证（第 7 步）。
+
+必须提醒：以上推出的只是\textbf{必要条件}。“若 SVD 存在，则 $\vv_i$ 是特征向量”
+不能反过来说成“随便取一组特征向量就能拼出 SVD”。第 7 步的验证正是在补这个逻辑缺口，
+第 \ref{sec:exist} 节的定理 \ref{thm:svd-exist} 则把它补得完全严格。
+
 \paragraph{第一步：算 $A\T A$。}
+为什么不直接对 $A$ 求特征值？因为 $A$ 是 $3\times2$ 的长方阵，特征值根本无从谈起——
+只有方阵才有特征值。而 $A\T A$ 是 $2\times2$ 的对称半正定矩阵，由谱定理一定能正交对角化，
+这恰好是倒推结论 (1) 所需要的对象。
 \begin{equation}
   A\T A=
   \begin{pmatrix}1&0&1\\0&1&1\end{pmatrix}
@@ -827,27 +866,31 @@ $V$ 的尺寸 & $n\times n$ & $n\times r$ & $n\times k$ \\
 \end{equation}
 
 \paragraph{第二步：求 $A\T A$ 的特征值。}
-特征多项式为
+这些特征值就是 $\sigma_i^2$ 的候选值。特征多项式为
 $\det(A\T A-\lambda I)=(2-\lambda)^2-1=(\lambda-1)(\lambda-3)$，
 故特征值为 $\lambda_1=3$，$\lambda_2=1$。两者都为正，说明 $\rank(A)=2$，$A$ 是列满秩的。
 
 \paragraph{第三步：求单位特征向量。}
-对 $\lambda_1=3$：解 $(A\T A-3I)\x=\mathbf{0}$，即
-$\begin{pmatrix}-1&1\\1&-1\end{pmatrix}\x=\mathbf{0}$，得 $\x\propto(1,1)\T$，
-单位化后 $\vv_1=\frac{1}{\sqrt2}(1,1)\T$。
+它们直接就是 $V$ 的列。对 $\lambda_1=3$：解 $(A\T A-3I)\x=\mathbf{0}$。把 $A\T A-3I$ 代进去就是
+$-x_1+x_2=0$，即 $x_1=x_2$，故 $\x\propto(1,1)\T$，单位化后
+$\vv_1=\frac{1}{\sqrt2}(1,1)\T$。
 
-对 $\lambda_2=1$：解 $\begin{pmatrix}1&1\\1&1\end{pmatrix}\x=\mathbf{0}$，
-得 $\x\propto(1,-1)\T$，单位化后 $\vv_2=\frac{1}{\sqrt2}(1,-1)\T$。
+对 $\lambda_2=1$：解 $(A\T A-I)\x=\mathbf{0}$，即 $x_1+x_2=0$，故
+$\x\propto(1,-1)\T$，单位化后 $\vv_2=\frac{1}{\sqrt2}(1,-1)\T$。
 
 两者内积为零，验证了谱定理的结论。
 
 \paragraph{第四步：奇异值是特征值的平方根。}
+这一步不是新定义，只是倒推结论 (2) 的翻译：$\sigma_i^2=\lambda_i$。
 \begin{equation}
   \sigma_1=\sqrt{\lambda_1}=\sqrt3\approx1.732,\qquad
   \sigma_2=\sqrt{\lambda_2}=1 .
 \end{equation}
 
 \paragraph{第五步：用 $\bu_i=A\vv_i/\sigma_i$ 算左奇异向量。}
+这是式 \eqref{eq:key-relation} 的反解，不是新公式：既然 $A\vv_i=\sigma_i\bu_i$，
+两边除以 $\sigma_i$ 即可。注意除法合法的前提是 $\sigma_i>0$——这也解释了为什么
+零奇异值对应的 $\bu$ 无法由这个式子得到，只能靠下一步补全。
 \begin{align}
   A\vv_1&=\frac{1}{\sqrt2}\begin{pmatrix}1\\1\\2\end{pmatrix},
   &\bu_1&=\frac{A\vv_1}{\sigma_1}
@@ -859,14 +902,35 @@ $\begin{pmatrix}-1&1\\1&-1\end{pmatrix}\x=\mathbf{0}$，得 $\x\propto(1,1)\T$�
 \end{align}
 
 \paragraph{第六步：补全 $U$ 的第三列。}
-$\bu_1,\bu_2$ 已是 $\R^3$ 中的标准正交组，还差一个方向。取
+$U$ 必须是 $3\times3$ 的正交矩阵，而第 5 步只造出两列，还差一个与 $\bu_1,\bu_2$
+都正交的单位向量。标准做法是对 $\{\bu_1,\bu_2,\mathbf{e}_1\}$ 做 Gram--Schmidt：
+取 $\mathbf{e}_1=(1,0,0)\T$，减去它在 $\bu_1,\bu_2$ 上的投影分量，
 \begin{equation}
-  \bu_3=\frac{1}{\sqrt3}\begin{pmatrix}1\\1\\-1\end{pmatrix},
+\begin{aligned}
+  \mathbf{w}&=\mathbf{e}_1-(\mathbf{e}_1\T\bu_1)\bu_1-(\mathbf{e}_1\T\bu_2)\bu_2\\
+  &=(1,0,0)\T-\tfrac16(1,1,2)\T-\tfrac12(1,-1,0)\T
+   =\tfrac13(1,1,-1)\T ,
+\end{aligned}
 \end{equation}
-直接验证 $\bu_3\T\bu_1=\bu_3\T\bu_2=0$ 且 $\nrm{\bu_3}=1$。
-（也可以取反方向 $-\bu_3$，两种取法都合法，见 \ref{sec:unique} 节关于唯一性的讨论。）
+其中用到 $\mathbf{e}_1\T\bu_1=1/\sqrt6$ 与 $\mathbf{e}_1\T\bu_2=1/\sqrt2$。
+归一化（$\nrm{\mathbf{w}}=1/\sqrt3$）得
+\begin{equation}
+  \bu_3=\frac{\mathbf{w}}{\nrm{\mathbf{w}}}
+  =\frac{1}{\sqrt3}\begin{pmatrix}1\\1\\-1\end{pmatrix},
+\end{equation}
+可直接验证 $\bu_3\T\bu_1=\bu_3\T\bu_2=0$ 且 $\nrm{\bu_3}=1$。
+
+\begin{rem}
+在 $\R^3$ 里还有个更快的办法：叉积。$\bu_1\times\bu_2$ 与两者都正交，归一化即得
+$\bu_3$（算得 $(2,2,-2)\T/\sqrt{12}=(1,1,-1)\T/\sqrt3$，与上面一致）。
+但叉积只在三维可用，Gram--Schmidt 对任意维数都成立，是通用做法。
+
+$\bu_3$ 取正号还是负号都合法（见 \ref{sec:unique} 节）。本讲义取 $(1,1,-1)\T/\sqrt3$，
+此时 $\det U=+1$，$U$ 是纯旋转；取反号则 $\det U=-1$，变成反射。
+\end{rem}
 
 \paragraph{第七步：写出三个矩阵并验证。}
+把前面得到的列按顺序排好：
 \begin{equation}
   U=\begin{pmatrix}
   \frac{1}{\sqrt6}&\frac{1}{\sqrt2}&\frac{1}{\sqrt3}\\[3pt]
@@ -880,6 +944,8 @@ $\bu_1,\bu_2$ 已是 $\R^3$ 中的标准正交组，还差一个方向。取
   \end{pmatrix}.
 \end{equation}
 
+验证这一步不能省：到此为止只证明了“若 SVD 存在则必是这个形式”，
+还没有证明“这个形式确实是 SVD”。逐元素核对 $U\Sigma V\T$ 与 $A$——
 验证 $(1,1)$ 元与 $(3,2)$ 元（其余元素同理）：
 \begin{align}
   (U\Sigma V\T)_{11}

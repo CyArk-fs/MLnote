@@ -953,21 +953,49 @@ $\bx_i-\bar\bx=(\bx_i-\bar\bx_c)+(\bar\bx_c-\bar\bx)$。对第 $c$ 类求和，
 
 这个写法是错的，而且错得很隐蔽——它在 $d=1$ 时完全正确，一到 $d\ge2$ 就退化。
 
-\begin{prop}[迹比问题没有最大值]
-  设 $\lambda_1\ge\lambda_2\ge\cdots$ 为 $\bS_w^{-1}\bS_b$ 的广义特征值。则 \eqref{eq:traceratio} 的上确界为 $\lambda_1$，但\emph{取不到}：任何 $d\ge2$ 的 $\bW$ 都只会实际用到第一个方向。
+\begin{prop}[迹比会退化成一维]
+  设 $\lambda_1\ge\lambda_2\ge\cdots$ 是 $\bS_w^{-1}\bS_b$ 的广义特征值。对任意 $\bW=[\bw_1,\dots,\bw_d]$，
+  \begin{equation}
+    R(\bW)=\frac{\tr(\bW\tp\bS_b\bW)}{\tr(\bW\tp\bS_w\bW)}
+    =\frac{\sum_{k=1}^{d}\tau_kJ(\bw_k)}{\sum_{k=1}^{d}\tau_k},
+    \qquad \tau_k=\bw_k\tp\bS_w\bw_k>0,
+    \label{eq:traceavg}
+  \end{equation}
+  即 $R$ 是各列 Fisher 比值的\emph{加权平均}。故 $R(\bW)\le\max_kJ(\bw_k)\le\lambda_1$；当 $\lambda_1>\lambda_2$ 且 $\bW$ 列满秩时严格小于 $\lambda_1$，而 $\lambda_1$ 可被一列趋于零的 $\bW$ 逼近。于是 \eqref{eq:traceratio} 的上确界是 $\lambda_1$，最大值不存在。
 \end{prop}
 
 \begin{proof}
-把 $\bW$ 的两列记作 $\bw_1,\bw_2$，并令 $\bw_2'=\varepsilon\bw_2$。迹是可加的：
+\textbf{第一步，迹按列拆开。}由矩阵乘法，
 \begin{equation}
-  \frac{\bw_1\tp\bS_b\bw_1+\varepsilon^2\bw_2\tp\bS_b\bw_2}
-       {\bw_1\tp\bS_w\bw_1+\varepsilon^2\bw_2\tp\bS_w\bw_2}
-  \;\xrightarrow[\ \varepsilon\to0\ ]{}\;
-  \frac{\bw_1\tp\bS_b\bw_1}{\bw_1\tp\bS_w\bw_1}
-  \;\le\;\lambda_1 .
+  \tr(\bW\tp\bS_b\bW)=\sum_{k=1}^{d}\bw_k\tp\bS_b\bw_k,
+  \qquad
+  \tr(\bW\tp\bS_w\bW)=\sum_{k=1}^{d}\bw_k\tp\bS_w\bw_k\equiv\sum_{k=1}^{d}\tau_k .
 \end{equation}
-取 $\bw_1$ 为最优方向、$\varepsilon$ 足够小，比值可以任意接近 $\lambda_1$。可是只要 $\varepsilon>0$，第二列就贡献了一点分母却几乎不贡献分子，比值严格小于 $\lambda_1$。所以上确界是 $\lambda_1$ 而非最大值——所谓「最优解」会把后几列压成零，第二维形同虚设。
+把分子分母同时除以 $\sum_k\tau_k$，每一项就变成 $\dfrac{\tau_k}{\sum_j\tau_j}J(\bw_k)$：系数非负、和为 $1$，正是加权平均。这一步不需要任何假设，只是把矩阵乘法按列展开。
+
+\textbf{第二步，加权平均不超上界。}加权平均不会超过被平均的最大值，而每个 $J(\bw_k)\le\lambda_1$（瑞利商的上界，\S2.4）。两者合起来即 $R(\bW)\le\lambda_1$。
+
+\textbf{第三步，等号取不到。}$R(\bW)=\lambda_1$ 要求每个 $\tau_k>0$ 的列都满足 $J(\bw_k)=\lambda_1$，也就是所有列都落在 $\lambda_1$ 的特征子空间里。$\lambda_1>\lambda_2$ 时这个子空间只有一维，列满秩的 $\bW$（$d\ge2$）凑不出来，故 $R(\bW)<\lambda_1$ 严格成立。
+
+\textbf{第四步，但可以逼近。}取 $\bw_1$ 为 $\lambda_1$ 的特征向量，其余列取与 $\bw_1$ 线性无关的任意向量，再令 $\bw_k\mapsto\varepsilon\bw_k$（$k\ge2$）。$J$ 与尺度无关，变的只是权重：
+\begin{equation}
+  R(\bW_\varepsilon)
+  =\frac{\tau_1J(\bw_1)+\varepsilon^2\sum_{k\ge2}\tau_kJ(\bw_k)}
+        {\tau_1+\varepsilon^2\sum_{k\ge2}\tau_k}
+  \;\xrightarrow[\ \varepsilon\to0\ ]{}\;J(\bw_1)=\lambda_1 ,
+\end{equation}
+其中 $\tau_k$ 指缩放前的值。每个 $\varepsilon>0$ 对应的 $\bW_\varepsilon$ 仍列满秩，所以这些点都在可行域内，比值却只逼近而不等于 $\lambda_1$。最大值不存在。
 \end{proof}
+
+一句话：$R(\bW)$ 是各列 Fisher 比值的加权平均，\textbf{加权平均永远赢不过其中最好的那一项}。多给一维不会抬高上界，只会增加一个拖后腿的项——所以「最优解」的本能就是把后几列压成零。
+
+\begin{add}[最小的反例：两列不如一列]
+取 $\bS_w=\bI$、$\bS_b=\diag(4,1)$，则 $\lambda_1=4$、$\lambda_2=1$。若取 $\bW=[\be_1,\be_2]$，
+\begin{equation}
+  R(\bW)=\frac{4+1}{1+1}=2.5\;<\;4=J(\be_1).
+\end{equation}
+多给一维，目标值从 $4$ 掉到 $2.5$。把第二列缩成 $\varepsilon\be_2$，$R=(4+\varepsilon^2)/(1+\varepsilon^2)$ 才慢慢爬回 $4$——这就是「把第二列压成零」的字面含义。
+\end{add}
 
 数值上也能看到：本讲 \S6.3 的校验里，两万个随机 $\bS_w$-正交的 $\bW$ 中，迹的最大值是 $14.15$，而 $\sum_k\lambda_k=17.41$；若按迹比排序，最优的永远是「一维解」。
 

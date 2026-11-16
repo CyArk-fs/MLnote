@@ -354,7 +354,7 @@
 
 \begin{enumerate}[label=\textcolor{navy}{\bfseries\arabic*.},leftmargin=2.2em]
   \item 说清为什么不能直接把类别编码成数字做回归；
-  \item 写出 Fisher 准则，并推出两类情形下的 $\hat\bw\propto\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$；
+  \item 写出 Fisher 准则，并推出两类情形下的 $\hat\bw\propto\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$；
   \item 解释这个方向为什么\emph{不是}两类中心连线，以及 $\bS_w^{-1}$ 在其中起什么作用；
   \item 写出三个散布矩阵，验证 $\bS_t=\bS_w+\bS_b$，并说明为什么要带 $N_c$ 权重；
   \item 把多类问题化为广义特征值问题，证明最多只能用 $K-1$ 个方向；
@@ -574,15 +574,15 @@ LDA 做的事，是\emph{先找一个最好的观察角度，再在这个角度�
   \bS_w=\sum_{c=1}^{2}\sum_{i:y_i=c}(\bx_i-\bar\bx_c)(\bx_i-\bar\bx_c)\tp .
   \label{eq:sw2}
 \end{equation}
-投影后，类内平方和变成 $\bw\tp\bS_w\bw$，类间均值差变成 $\bw\tp(\bar\bx_1-\bar\bx_2)$，其平方为 $\bw\tp(\bar\bx_1-\bar\bx_2)(\bar\bx_1-\bar\bx_2)\tp\bw$。若定义
+投影后，类内平方和变成 $\bw\tp\bS_w\bw$，类间均值差变成 $\bw\tp(\bar\bx_2-\bar\bx_1)$，其平方为 $\bw\tp(\bar\bx_2-\bar\bx_1)(\bar\bx_2-\bar\bx_1)\tp\bw$。若定义
 \begin{equation}
-  \bS_b=(\bar\bx_1-\bar\bx_2)(\bar\bx_1-\bar\bx_2)\tp ,
+  \bS_b=(\bar\bx_2-\bar\bx_1)(\bar\bx_2-\bar\bx_1)\tp ,
   \label{eq:sb2}
 \end{equation}
 则二者之比为
 \begin{equation}
   J(\bw)\;=\;\frac{\bw\tp\bS_b\bw}{\bw\tp\bS_w\bw}
-  \;=\;\frac{\bigl(\bw\tp(\bar\bx_1-\bar\bx_2)\bigr)^2}{\bw\tp\bS_w\bw}.
+  \;=\;\frac{\bigl(\bw\tp(\bar\bx_2-\bar\bx_1)\bigr)^2}{\bw\tp\bS_w\bw}.
   \label{eq:fisher}
 \end{equation}
 这就是\textbf{Fisher 准则}。它是两个数的比：分子是投影后的类间散度，分母是投影后的类内散度。$J$ 越大，两类在投影轴上分得越开。
@@ -610,12 +610,14 @@ $J$ 只度量「分得开不开」，不度量「分得对不对」。$J$ 大意
 \end{equation}
 这就是一个\textbf{广义特征值问题}。在 $\bS_w$ 可逆时，两边左乘 $\bS_w^{-1}$，得 $\bS_w^{-1}\bS_b\bw=\lambda\bw$。
 
-而 $\bS_b$ 是外积矩阵，值域只有 $\Span\{\bar\bx_1-\bar\bx_2\}$ 一个方向，秩为 $1$。因此它只有一个非零特征值，对应的特征向量必然与 $\bar\bx_1-\bar\bx_2$ 平行。代入 \eqref{eq:gevp2} 立刻得到
+而 $\bS_b$ 是外积矩阵，值域只有 $\Span\{\bar\bx_2-\bar\bx_1\}$ 一个方向，秩为 $1$。因此它只有一个非零特征值，对应的特征向量必然与 $\bar\bx_2-\bar\bx_1$ 平行。代入 \eqref{eq:gevp2} 立刻得到
 \begin{equation}
-  \boxed{\;\hat\bw\;\propto\;\bS_w^{-1}(\bar\bx_1-\bar\bx_2)\;}
+  \boxed{\;\hat\bw\;\propto\;\bS_w^{-1}(\bar\bx_2-\bar\bx_1)\;}
   \label{eq:lda2}
 \end{equation}
 比例常数任取（习惯上取单位向量）。这个式子短得让人怀疑，但它是整讲的中心：\textbf{Fisher 最优方向 = 类内散布矩阵的逆，乘以两类中心差。}
+
+符号也只定到正负：$\bw$ 与 $-\bw$ 给的是同一条判别线，$J$ 里是平方，数值完全不变。本讲统一取 $\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$ 这一号，好处是\textbf{类 2 的得分更高}，后面的数值例题、\S2.6 的比较表与 \S2.7 的阈值公式都按这个方向写，读者不必自己换算符号。（不少教科书取 $\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$，只是把方向反过来，两条路算出的判别线是同一条。）
 
 \paragraph{第二条路：瑞利商。}换个视角可以看得更透。$\bS_w$ 正定时可以开平方，令 $\bu=\bS_w^{1/2}\bw$，则
 \begin{equation}
@@ -634,7 +636,7 @@ $J$ 只度量「分得开不开」，不度量「分得对不对」。$J$ 大意
 \begin{equation}
   \bar\bx_1=\begin{pmatrix}4.56\\1.38\end{pmatrix},\qquad
   \bar\bx_2=\begin{pmatrix}5.90\\2.14\end{pmatrix},\qquad
-  \bar\bx_1-\bar\bx_2=\begin{pmatrix}-1.34\\-0.76\end{pmatrix}.
+  \bar\bx_2-\bar\bx_1=\begin{pmatrix}1.34\\0.76\end{pmatrix}.
 \end{equation}
 类内散布矩阵（每个样本先减去本类均值，再算平方和）：
 \begin{equation}
@@ -815,7 +817,7 @@ $J$ 只度量「分得开不开」，不度量「分得对不对」。$J$ 大意
   \hat\bw\tp\Bigl(\bx-\frac{\bar\bx_1+\bar\bx_2}{2}\Bigr)=0 .
   \label{eq:thr}
 \end{equation}
-几何上，这条边界是过中点、以 $\hat\bw$ 为法向的超平面（二维时就是那条判别线的垂线）。
+几何上，这条边界是过中点、以 $\hat\bw$ 为法向的超平面（二维时就是那条判别线的垂线）。两侧的归属要说清：本讲的 $\hat\bw$ 指向类 2，所以\textbf{得分高的一侧是类 2}——$z>z_0$ 判类 2，$z<z_0$ 判类 1。后面凡是说"阈值往哪边移"，都以这句为准。
 
 若先验不等，$\hat\phi_1\neq\hat\phi_2$，边界要朝先验小的那一侧平移。\S4 会推出完整的式子，这里先给结论：
 \begin{equation}
@@ -937,7 +939,7 @@ $\bx_i-\bar\bx=(\bx_i-\bar\bx_c)+(\bar\bx_c-\bar\bx)$。对第 $c$ 类求和，
 
 二分类时两种写法只差一个常数：代入 $\bar\bx=(N_1\bar\bx_1+N_2\bar\bx_2)/N$ 可算出
 \begin{equation}
-  \bS_b=\frac{N_1N_2}{N}(\bar\bx_1-\bar\bx_2)(\bar\bx_1-\bar\bx_2)\tp ,
+  \bS_b=\frac{N_1N_2}{N}(\bar\bx_2-\bar\bx_1)(\bar\bx_2-\bar\bx_1)\tp ,
 \end{equation}
 因为 $J$ 是比值，同乘常数不影响最优方向。\textbf{多分类时不能省这个权重}。
 \end{add}
@@ -1122,7 +1124,7 @@ $\delta_c$ 对 $\bx$ 是线性的（二次项被丢掉了），所以 \textbf{$K
    +\log\frac{\hat\phi_c}{\hat\phi_{c'}}=0 .
   \label{eq:boundary}
 \end{equation}
-其法向是 $\bS_w^{-1}(\bar\bx_c-\bar\bx_{c'})$，与二分类的 $\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$ 完全一致。等先验时边界过两中心连线的中点；先验不等则沿该法向平移。$K$ 类的整体划分是若干超平面切出的凸区域。
+其法向是 $\bS_w^{-1}(\bar\bx_c-\bar\bx_{c'})$，与二分类的 $\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$ 完全一致。等先验时边界过两中心连线的中点；先验不等则沿该法向平移。$K$ 类的整体划分是若干超平面切出的凸区域。
 
 \begin{figure}[htbp]
 \centering
@@ -1216,6 +1218,14 @@ $\bS_w$ 有两种常见约定：本讲的「平方和」与「除以 $N$ 的平�
 \end{keybox}
 
 这里有个容易被忽略的细节：$\bSigma=\bS_w/N$ 意味着 \eqref{eq:disc} 里的 $\bS_w$ 恰好是 $\bSigma$ 的 $N$ 倍。代入 \eqref{eq:gdadisc} 会看到每一项都乘上 $N$——这正是 \S4.2 那条警告的来源。\textbf{概率视角天然给出了正确的尺度}：协方差是「平均」的，散布矩阵是「求和」的，两者差一个 $N$。
+
+\paragraph{二分类的副产品：线性 logit。}取 $K=2$，把 \eqref{eq:gdadisc} 的两式相减：
+\[
+  \log\frac{p(y=1\mid\bx)}{p(y=2\mid\bx)}
+  =\delta_1(\bx)-\delta_2(\bx)
+  =(\bmu_1-\bmu_2)\tp\bSigma^{-1}\bx+\text{const},
+\]
+即\textbf{共享协方差下，后验对数几率对 $\bx$ 是线性的}。这是第三讲（逻辑回归）\S2.3 的出发点，那里只需把类标从 $\{1,2\}$ 换成 $\{0,1\}$。
 
 \begin{add}[「共享协方差」到底假设了什么]
 它假设所有类的形状、大小、朝向都一样，只是位置不同。几何上，就是各类的等概率轮廓是同一族平移的椭圆（图 \ref{fig:boundary} 正是这样画的）。这个假设很强，但它换来了两个好处：判别函数对 $\bx$ 线性，以及参数个数大幅减少——只需估 $K$ 个均值加一个 $D\times D$ 的协方差，而不是 $K$ 个协方差。
@@ -1459,7 +1469,7 @@ LDA 的公式很短，但它的前提不短。下面七条，按在实践里踩�
 \emph{处理}：加特征（平方项、交互项）、用核 LDA，或换非线性模型。
 
 \begin{warn}[一个常见误解]
-「LDA 假设数据服从正态分布」这句话不完全对。LDA 的\emph{判别函数}只需要各类的均值与共享协方差，不要求正态；正态假设是在推导「$\delta_c$ 是后验对数」时才用到的。换句话说，\textbf{即使数据不正态，$\hat\bw\propto\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$ 仍是一个合理的方向}，只是它不再有「最优贝叶斯分类器」的解释。
+「LDA 假设数据服从正态分布」这句话不完全对。LDA 的\emph{判别函数}只需要各类的均值与共享协方差，不要求正态；正态假设是在推导「$\delta_c$ 是后验对数」时才用到的。换句话说，\textbf{即使数据不正态，$\hat\bw\propto\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$ 仍是一个合理的方向}，只是它不再有「最优贝叶斯分类器」的解释。
 \end{warn}
 
 % ============================================================
@@ -1471,7 +1481,7 @@ LDA 的公式很短，但它的前提不短。下面七条，按在实践里踩�
 \subsection{五个要点}
 
 \begin{enumerate}[label=\textcolor{navy}{\bfseries\arabic*.},leftmargin=2.3em,itemsep=0.55em]
-  \item \textbf{LDA 就是一个方向加一个阈值。}方向由 $\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$ 给出，阈值放在两类得分的中点（先验不等时平移）。
+  \item \textbf{LDA 就是一个方向加一个阈值。}方向由 $\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$ 给出，阈值放在两类得分的中点（先验不等时平移）。
   \item \textbf{这个方向不是中心连线。}$\bS_w^{-1}$ 先把空间白化，让所有方向的类内散布都变成 $1$，再在白化空间里沿中心连线看——几何上等价，直觉上完全不同。
   \item \textbf{多类时是一个广义特征值问题。}$\bS_b\bW=\bS_w\bW\bLambda$，取前 $d$ 个特征向量并归一化成 $\bW\tp\bS_w\bW=\bI_d$。
   \item \textbf{最多 $K-1$ 维。}$\rank(\bS_b)\le K-1$，因为类中心偏差的加权和为零。这个上限与 $\rank(\bS_w)\le N-K$ 是两个独立的上限，管的事情不同。
@@ -1548,7 +1558,7 @@ LDA 的公式很短，但它的前提不短。下面七条，按在实践里踩�
 
 \subsection*{B 组 · 提高}
 
-\noindent\textbf{B1.} 证明：只要 $\bS_w$ 正定，$J(\bw)$ 在 $\bw\propto\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$ 处取到全局最大值，且最大值等于 $(\bar\bx_1-\bar\bx_2)\tp\bS_w^{-1}(\bar\bx_1-\bar\bx_2)$（二分类、$\bS_b$ 用不带系数的写法）。
+\noindent\textbf{B1.} 证明：只要 $\bS_w$ 正定，$J(\bw)$ 在 $\bw\propto\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$ 处取到全局最大值，且最大值等于 $(\bar\bx_2-\bar\bx_1)\tp\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$（二分类、$\bS_b$ 用不带系数的写法）。
 
 \noindent\textbf{B2.} 证明 $\bS_b$ 的秩不超过 $K-1$，并构造一个例子说明等号可以取到、也可以取不到。
 

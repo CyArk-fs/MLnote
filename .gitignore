@@ -9,3 +9,8 @@ pdf/*
 *.fdb_latexmk
 *.xdv
 *.synctex.gz
+
+# 工具状态与个人草稿，不纳入仓库
+.workbuddy/
+机器学习.md
+讲义版式模板.md

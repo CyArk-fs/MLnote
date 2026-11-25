@@ -314,7 +314,7 @@
 {\color{steel}\sffamily\footnotesize 本\ 讲\ 涵\ 盖\par}
 \vspace{0.26cm}
 {\color{grey}\footnotesize 投影与 Fisher 准则\ \ \textperiodcentered\ \ 散布矩阵与广义特征值
- \ \ \textperiodcentered\ \ $K-1$ 维上限\ \ \textperiodcentered\ \ 判别函数与 GDA
+ \ \ \textperiodcentered\ \ $K-1$ 维上限\ \ \textperiodcentered\ \ 判别函数与概率解释
  \ \ \textperiodcentered\ \ 与 PCA 的分野\par}
 
 \vspace{3.55cm}
@@ -1083,7 +1083,7 @@ $\bS_b$ 的秩受限于类别数，$\bS_w$ 的秩受限于样本数：$\rank(\bS
 %  第 4 节
 % ============================================================
 
-\section{判别函数与高斯判别分析}
+\section{判别函数与概率解释}
 
 投影只给出坐标，判类还需要规则。这一节先写出规则（三种等价的说法），再解释它为什么恰好长成这个线性样子——答案藏在一组概率假设里。
 
@@ -1162,46 +1162,21 @@ $\delta_c$ 对 $\bx$ 是线性的（二次项被丢掉了），所以 \textbf{$K
 \subsection{尺度一致性}
 
 \begin{warn}[改了 $S_w$ 就要整体改]
-$\bS_w$ 有两种常见约定：本讲的「平方和」与「除以 $N$ 的平均」。前者数值是后者的 $N$ 倍。若把 \eqref{eq:disc} 中的 $\bS_w$ 换成 $\bS_w/N$，第一项与第二项都会乘上 $N$，而 $\log\hat\phi_c$ 不会——先验项与判别项的相对权重就错了，判定结果会变。
+$\bS_w$ 有两种常见约定：本讲的「平方和」与「除以 $N$ 的平均」，前者数值是后者的 $N$ 倍。若把 \eqref{eq:disc} 中的 $\bS_w$ 换成 $\bS_w/N$，第一项与第二项都会乘上 $N$，而 $\log\hat\phi_c$ 不动——先验项与判别项的相对权重就错了，判定结果会变。
 
-要改约定就整体改：或者全部用平方和、先验项照写；或者全部用平均协方差、把先验项乘以 $N$（等价于把 $\delta_c$ 除以 $N$ 后再加先验）。\textbf{不要只改一边。}
+要改就整体改：要么全程用平方和，要么全程用平均协方差并把前两项乘 $N$。完整的推导与三种记号的对应关系在第三讲 \S4.4。
 \end{warn}
 
-\subsection{贝叶斯公式与共享协方差假设}
+\subsection{概率视角：共享协方差}
 
-前面从「几何」出发：找方向、比散布。现在换一副眼镜，从「概率」出发：假设每一类长什么样，再用贝叶斯公式反推它属于谁。两条路会走到同一个地方——这不是巧合，而是 LDA 背后那个隐含假设的必然结果。
+前面从几何出发：找方向、比散布。$\bS_w^{-1}(\bar\bx_2-\bar\bx_1)$ 这个方向来得有些突然——为什么是「类内散布的逆」乘「类间位移」？答案在概率一侧：它是「各类同形高斯」这一假设的必然产物。
 
-设类先验为 $p(y=c)=\phi_c$，类条件密度为 $p(\bx\mid y=c)$。由贝叶斯公式，
-\begin{equation}
-  p(y=c\mid\bx)=\frac{p(\bx\mid y=c)\,\phi_c}{\sum_{c'=1}^{K}p(\bx\mid y=c')\,\phi_{c'}} .
-  \label{eq:posterior}
-\end{equation}
-分母对所有 $c$ 相同，所以「后验最大」等价于「分子最大」：
-\begin{equation}
-  \hat y=\argmax_c\ \bigl[\log p(\bx\mid y=c)+\log\phi_c\bigr].
-  \label{eq:map}
-\end{equation}
-这一步没有做任何假设。接下来才是关键：\textbf{假定 $p(\bx\mid y=c)$ 是什么形状}。
+完整的推导在第三讲：\S2 把联合似然按类别拆开，\S3 给出类均值的估计，\S4 用迹技巧解出协方差。这里只取结论。设 $y$ 的先验为 $\phi_c$，且
+\[
+  \bx\mid y=c\;\sim\;\mathcal N(\bmu_c,\bSigma),
+\]
+所有类共用同一个 $\bSigma$。代入贝叶斯公式、取对数，再丢掉所有与 $c$ 无关的项（$-\frac D2\log(2\pi)$、$-\frac12\log\abs\bSigma$，以及 $\bx\tp\bSigma^{-1}\bx$），剩下
 
-假设每一类都是多元正态，且\textbf{所有类共用同一个协方差矩阵}：
-\begin{equation}
-  \bx\mid y=c\;\sim\;\mathcal{N}(\bmu_c,\bSigma),
-  \qquad
-  p(\bx\mid y=c)=\frac{1}{(2\pi)^{D/2}\lvert\bSigma\rvert^{1/2}}
-  \exp\Bigl[-\tfrac12(\bx-\bmu_c)\tp\bSigma^{-1}(\bx-\bmu_c)\Bigr].
-  \label{eq:gauss}
-\end{equation}
-取对数：
-\begin{equation}
-  \log p(\bx\mid y=c)=-\tfrac{D}{2}\log(2\pi)-\tfrac12\log\lvert\bSigma\rvert
-  -\tfrac12(\bx-\bmu_c)\tp\bSigma^{-1}(\bx-\bmu_c).
-\end{equation}
-前两项与 $c$ 无关，在 $\argmax$ 里可以丢掉。把二次型展开：
-\begin{equation}
-  (\bx-\bmu_c)\tp\bSigma^{-1}(\bx-\bmu_c)
-  =\bx\tp\bSigma^{-1}\bx-2\bx\tp\bSigma^{-1}\bmu_c+\bmu_c\tp\bSigma^{-1}\bmu_c,
-\end{equation}
-其中 $\bx\tp\bSigma^{-1}\bx$ 又与 $c$ 无关，同样丢掉。剩下
 \begin{equation}
   \delta_c(\bx)=\bx\tp\bSigma^{-1}\bmu_c-\tfrac12\bmu_c\tp\bSigma^{-1}\bmu_c+\log\phi_c .
   \label{eq:gdadisc}
@@ -1225,23 +1200,17 @@ $\bS_w$ 有两种常见约定：本讲的「平方和」与「除以 $N$ 的平�
   =\delta_1(\bx)-\delta_2(\bx)
   =(\bmu_1-\bmu_2)\tp\bSigma^{-1}\bx+\text{const},
 \]
-即\textbf{共享协方差下，后验对数几率对 $\bx$ 是线性的}。这是第三讲（逻辑回归）\S2.3 的出发点，那里只需把类标从 $\{1,2\}$ 换成 $\{0,1\}$。
+即\textbf{共享协方差下，后验对数几率对 $\bx$ 是线性的}。这条式子在第三讲 \S6.3 由边界法向那一侧也推了一遍，第四讲（逻辑回归）则把它单独取出来当下注的对象——那里只需把类标从 $\{1,2\}$ 换成 $\{0,1\}$。
 
 \begin{add}[「共享协方差」到底假设了什么]
-它假设所有类的形状、大小、朝向都一样，只是位置不同。几何上，就是各类的等概率轮廓是同一族平移的椭圆（图 \ref{fig:boundary} 正是这样画的）。这个假设很强，但它换来了两个好处：判别函数对 $\bx$ 线性，以及参数个数大幅减少——只需估 $K$ 个均值加一个 $D\times D$ 的协方差，而不是 $K$ 个协方差。
+它假设所有类的形状、大小、朝向都一样，只是位置不同。几何上，就是各类的等概率轮廓是同一族平移的椭圆（图 \ref{fig:boundary} 正是这样画的）。这个假设很强，但它换来两件事：判别函数对 $\bx$ 线性，参数个数也只有「$K$ 个均值 $+$ 一个 $D\times D$ 协方差」。第三讲 \S7 会把它放进四格表里，和「各类独立」「对角」两种结构一起比较。
 \end{add}
 
 \subsection{二次判别分析}
 
-如果把「共享」去掉，允许每一类有自己的 $\bSigma_c$，那么 $\log\lvert\bSigma_c\rvert$ 不再与 $c$ 无关，二次项 $\bx\tp\bSigma_c^{-1}\bx$ 也不再能丢：
-\begin{equation}
-  \delta_c^{\mathrm{QDA}}(\bx)=-\tfrac12\log\lvert\bSigma_c\rvert
-  -\tfrac12(\bx-\bmu_c)\tp\bSigma_c^{-1}(\bx-\bmu_c)+\log\phi_c .
-  \label{eq:qda}
-\end{equation}
-这就是\textbf{二次判别分析}（QDA）。边界由 $\delta_c=\delta_{c'}$ 给出，是两个二次型相等，一般是一条二次曲线（二维时可能是椭圆、双曲线或抛物线）。
+去掉「共享」，允许每一类有自己的 $\bSigma_c$，那么 $-\frac12\log\abs{\bSigma_c}$ 不再与 $c$ 无关，二次项 $\bx\tp\bSigma_c^{-1}\bx$ 也不再能丢。判别函数多出一个\textbf{体积惩罚}，边界由两个二次型相等给出——这就是\textbf{二次判别分析}（QDA）。
 
-QDA 更灵活，但需要估计 $K$ 个协方差矩阵，参数个数从 $\frac{K(K-1)}{2}(D+1)$ 涨到 $\frac{K(K-1)}{2}\bigl(D+\frac{D(D+1)}{2}\bigr)$。样本少时估计方差大，反而不如 LDA。实践中常见的折中是「收缩」：用 $\bSigma_c\leftarrow(1-\alpha)\bSigma_c+\alpha\bSigma$ 把类协方差往共享协方差拉，$\alpha\in[0,1]$ 是平滑强度。
+它在第三讲 \S7 的四格表里占「各类 $\cdot$ 满」一格：参数个数从 $(K-1)+KD+\frac{D(D+1)}{2}$ 涨到 $(K-1)+KD+K\frac{D(D+1)}{2}$（$K=2,D=2$ 时是 $8$ 与 $11$）。参数一多，样本少时估计方差就大，反而不如 LDA；第三讲 \S5.3 的收缩 $\bSigma_c\leftarrow(1-\alpha)\bSigma_c+\alpha\bSigma$ 是常见的折中。边界形状、有界判别区域这些细节都在第三讲 \S7.2，这里不重复。
 
 \subsection{生成式与判别式方法}
 
@@ -1256,7 +1225,7 @@ LDA 与逻辑回归常被拿来对比，因为两者的决策边界都是超平�
 \midrule
 建模对象 & $p(\bx\mid y=c)$ 与 $\phi_c$ & 直接建模 $p(y\mid\bx)$\\[2pt]
 隐含假设 & 各类高斯、共享协方差 & 对数几率线性\\[2pt]
-参数个数 & $(K-1)(D+1)$ 左右 & $(K-1)(D+1)$\\[2pt]
+参数个数 & $(K-1)+KD+\frac{D(D+1)}{2}$ & $(K-1)(D+1)$\\[2pt]
 样本效率 & 假设成立时更好 & 假设不成立时更稳\\[2pt]
 典型失效 & 类别形状差异大、非高斯 & 边界非线性、交互项强\\
 \bottomrule

@@ -1,0 +1,1370 @@
+% !TEX program = xelatex
+% ============================================================
+%  机器学习 · 讲义  第五讲：朴素贝叶斯
+%  海军深蓝 · 经典学术版式
+%  编译：xelatex 05_naive_bayes.tex
+%        （无 .aux 时连跑三遍；已有中间文件时两遍即可）
+% ============================================================
+\documentclass[11pt,a4paper,fontset=windows,zihao=-4]{ctexart}
+
+% ---------- 版面 ----------
+\usepackage{geometry}
+\geometry{a4paper,left=2.55cm,right=2.55cm,top=2.55cm,bottom=2.45cm,
+  headheight=18pt,headsep=0.52cm,footskip=0.95cm,
+  marginparsep=0.40cm,marginparwidth=2.10cm}
+
+% ---------- 数学与字体 ----------
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{newpxtext,newpxmath}
+\usepackage{microtype}
+
+% ---------- 颜色 ----------
+\usepackage[table]{xcolor}
+\definecolor{navy}{HTML}{0B2545}      % 海军深蓝（主色）
+\definecolor{navy2}{HTML}{33587A}     % 次级蓝
+\definecolor{steel}{HTML}{4A6478}     % 灰蓝
+\definecolor{grey}{HTML}{6B7280}      % 中性灰
+\definecolor{mist}{HTML}{F4F6F9}      % 极浅蓝灰（底色）
+\definecolor{gold}{HTML}{8A6A3B}      % 暗金（仅用于提示）
+\definecolor{goldlight}{HTML}{C6A15B} % 亮金（深蓝底上的金线）
+
+% ---------- 表格与列表 ----------
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.6em,topsep=0.45em,itemsep=0.28em,parsep=0pt}
+\setlist[enumerate]{leftmargin=2.0em,topsep=0.45em,itemsep=0.28em,parsep=0pt}
+
+% ---------- 图形 ----------
+\usepackage{tikz}
+\usetikzlibrary{calc,positioning,arrows.meta,decorations.pathreplacing,
+  patterns,backgrounds,fit,shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% ---------- 彩色框 ----------
+\usepackage[most]{tcolorbox}
+
+% ---------- 页眉页脚 ----------
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{marginnote}
+\usepackage{tocloft}
+
+% ---------- 超链接 ----------
+\usepackage[colorlinks=true,linkcolor=navy,urlcolor=steel,citecolor=navy,
+  bookmarksnumbered=true]{hyperref}
+\hypersetup{
+  pdftitle={机器学习·讲义（第五讲）：朴素贝叶斯},
+  pdfauthor={CyArk},
+  pdfsubject={条件独立、计数估计与平滑},
+  pdfkeywords={朴素贝叶斯, 条件独立, 拉普拉斯平滑, 狄利克雷先验, 零一损失}
+}
+
+% ============================================================
+%  数学宏
+% ============================================================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\bX}{\mathbf{X}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\bw}{\mathbf{w}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\ba}{\mathbf{a}}
+\newcommand{\bb}{\mathbf{b}}
+\newcommand{\bz}{\mathbf{z}}
+\newcommand{\bg}{\mathbf{g}}
+\newcommand{\bp}{\mathbf{p}}
+\newcommand{\bv}{\mathbf{v}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bs}{\mathbf{s}}
+\newcommand{\bm}{\mathbf{m}}   % 字母 m 的粗体（第三讲用作先验均值 \bm_c），不是「加粗」命令
+\newcommand{\bn}{\mathbf{n}}
+\newcommand{\bA}{\mathbf{A}}
+\newcommand{\bB}{\mathbf{B}}
+\newcommand{\bC}{\mathbf{C}}
+\newcommand{\bD}{\mathbf{D}}
+\newcommand{\bI}{\mathbf{I}}
+\newcommand{\bH}{\mathbf{H}}
+\newcommand{\bL}{\mathbf{L}}
+\newcommand{\bM}{\mathbf{M}}
+\newcommand{\bN}{\mathbf{N}}
+\newcommand{\bS}{\mathbf{S}}
+\newcommand{\bU}{\mathbf{U}}
+\newcommand{\bV}{\mathbf{V}}
+\newcommand{\bW}{\mathbf{W}}
+\newcommand{\bZ}{\mathbf{Z}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\bDelta}{\boldsymbol{\Delta}}
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bphi}{\boldsymbol{\phi}}
+\newcommand{\bzero}{\mathbf{0}}
+\newcommand{\bmone}{\mathbf{1}}
+\newcommand{\tp}{^{\top}}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+\newcommand{\abs}[1]{\lvert #1\rvert}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\Span}{Span}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\Ncal}{\mathcal{N}}
+
+% ============================================================
+%  版式细节
+% ============================================================
+\linespread{1.30}
+\setlength{\parskip}{0.24em}
+\setlength{\parindent}{2em}
+
+% 章节样式
+\ctexset{
+  section/name={},
+  section/number=\arabic{section},
+}
+\titleformat{\section}[block]
+  {\normalfont\sffamily\Large\bfseries\color{navy}}
+  {\colorbox{navy}{\makebox[1.55em][c]{\color{white}\thesection}}\hspace{0.75em}}{0pt}{}
+  [\vspace{0.30em}{\color{navy!30}\titlerule[0.7pt]}]
+\titlespacing*{\section}{0pt}{2.4ex plus 1.0ex minus 0.4ex}{1.5ex}
+
+\titleformat{\subsection}[hang]
+  {\normalfont\sffamily\large\bfseries\color{navy!88}}
+  {\thesubsection}{0.65em}{}
+\titlespacing*{\subsection}{0pt}{1.8ex plus 0.6ex}{0.8ex}
+
+\titleformat{\subsubsection}[runin]
+  {\normalfont\sffamily\bfseries\color{navy!80}}
+  {}{0pt}{}
+\titlespacing*{\subsubsection}{0pt}{1.2ex plus 0.4ex}{0.6em}
+
+\titleformat{\paragraph}[runin]
+  {\normalfont\sffamily\bfseries\color{navy!88}}
+  {}{0pt}{}
+\titlespacing*{\paragraph}{0pt}{1.05ex plus 0.35ex}{0.55em}
+
+% 页眉页脚
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{{\color{navy!40}%
+  \hrule height \headrulewidth width \headwidth}}
+\fancyhead[L]{\sffamily\footnotesize\color{steel}机器学习\,·\,讲义}
+\fancyhead[R]{\sffamily\footnotesize\color{steel}\leftmark}
+\fancyfoot[C]{\sffamily\footnotesize\color{navy}\thepage}
+\renewcommand{\sectionmark}[1]{\markboth{\thesection\quad #1}{}}
+\fancypagestyle{plain}{%
+  \fancyhf{}\renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\sffamily\footnotesize\color{navy}\thepage}}
+
+% 图表标题
+\captionsetup{font={small},labelfont={bf,sf,color=navy},labelsep=quad,
+  justification=centering,skip=6pt}
+
+% 目录（手工排版标题，避免 \leftmark 捕获颜色命令）
+\makeatletter
+\renewcommand{\tableofcontents}{%
+  \par\begingroup
+    \sffamily\Large\bfseries\color{navy}目\quad 录\par
+  \endgroup
+  \vspace{0.85em}
+  \setlength{\parskip}{0pt}%
+  \@starttoc{toc}%
+}
+\makeatother
+
+% 目录条目样式
+\renewcommand{\cftsecfont}{\footnotesize\sffamily\bfseries\color{navy}}
+\renewcommand{\cftsecpagefont}{\footnotesize\sffamily\bfseries\color{navy}}
+\renewcommand{\cftsubsecfont}{\footnotesize\color{navy!85}}
+\renewcommand{\cftsubsecpagefont}{\footnotesize\color{navy!85}}
+\renewcommand{\cftsubsubsecfont}{\color{steel}}
+\renewcommand{\cftsubsubsecpagefont}{\color{steel}}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cftsubsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cftsubsubsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftsecnumwidth}{1.9em}
+\setlength{\cftsubsecnumwidth}{2.5em}
+\setlength{\cftsubsubsecnumwidth}{3.4em}
+\setlength{\cftbeforesecskip}{4.0pt}
+\setlength{\cftbeforesubsecskip}{0.2pt}
+\setlength{\cftbeforesubsubsecskip}{0pt}
+\renewcommand{\cftsecaftersnum}{\hspace{0.55em}}
+\renewcommand{\cftsubsecaftersnum}{\hspace{0.4em}}
+\renewcommand{\cftsubsubsecaftersnum}{\hspace{0.35em}}
+
+% ============================================================
+%  提示框样式
+% ============================================================
+\tcbset{
+  basebox/.style={
+    enhanced, breakable, sharp corners,
+    boxrule=0pt, leftrule=2.2pt, arc=0pt, outer arc=0pt,
+    left=0.9em, right=0.9em, top=0.45em, bottom=0.62em,
+    before skip=0.85em, after skip=0.85em,
+    before upper={\parindent=0pt\parskip=0.35em},
+    fonttitle=\sffamily\bfseries\small,
+    coltitle=navy, titlerule=0.35pt,
+    toptitle=0.32em, bottomtitle=0.5em,
+  }
+}
+\newtcolorbox[auto counter,number within=section]{dfn}[1][]{%
+  basebox, colframe=navy, colback=mist, colbacktitle=mist,
+  title={定义~\thetcbcounter\quad\textcolor{navy!45}{\textbar}\quad\textcolor{navy}{#1}}}
+\newtcolorbox[auto counter,number within=section]{thm}[1][]{%
+  basebox, colframe=navy, colback=white, colbacktitle=white,
+  title={定理~\thetcbcounter\quad\textcolor{navy!45}{\textbar}\quad\textcolor{navy}{#1}}}
+\newtcolorbox[auto counter,number within=section]{prop}[1][]{%
+  basebox, colframe=navy2, colback=white, colbacktitle=white,
+  title={命题~\thetcbcounter\quad\textcolor{navy!45}{\textbar}\quad\textcolor{navy}{#1}}}
+\newtcolorbox[auto counter,number within=section]{exm}[1][]{%
+  basebox, colframe=steel, colback=white, colbacktitle=white,
+  title={例题~\thetcbcounter\quad\textcolor{steel!45}{\textbar}\quad\textcolor{steel}{#1}}}
+\newtcolorbox{add}[1][]{%
+  basebox, colframe=steel, colback=mist, colbacktitle=mist,
+  title={\textcolor{steel}{补充}\quad\textcolor{steel!45}{\textbar}\quad\textcolor{steel}{#1}}}
+\newtcolorbox{warn}[1][]{%
+  basebox, colframe=gold, colback=gold!4, colbacktitle=gold!4,
+  title={\textcolor{gold}{注意}\quad\textcolor{gold!55}{\textbar}\quad\textcolor{gold}{#1}}}
+\newtcolorbox{keybox}[1][]{%
+  enhanced, breakable, sharp corners, boxrule=0.55pt,
+  colframe=navy!55, colback=navy!3, colbacktitle=navy!3,
+  left=0.9em, right=0.9em, top=0.45em, bottom=0.62em,
+  before skip=1.0em, after skip=1.0em,
+  before upper={\parindent=0pt\parskip=0.35em},
+  fonttitle=\sffamily\bfseries\small, coltitle=navy,
+  titlerule=0.35pt, toptitle=0.3em, bottomtitle=0.5em,
+  title={\textcolor{navy}{#1}}}
+
+% 边注
+\renewcommand*{\marginfont}{\footnotesize\color{steel}}
+\setlength{\marginparpush}{6pt}
+
+% 常用小工具
+\newcommand{\hl}[1]{\textcolor{navy}{\textbf{#1}}}
+\newcommand{\tabhead}{\sffamily\bfseries\color{navy}}
+\tikzset{
+  cls1/.style={fill=navy,draw=none},
+  cls2/.style={fill=goldlight,draw=none},
+  frame/.style={draw=steel!30,line width=0.4pt},
+  axisar/.style={->,steel!55,line width=0.5pt},
+  lab/.style={font=\scriptsize,text=steel,inner sep=2pt},
+}
+
+\begin{document}
+
+% ============================================================
+%  封面 · 目录 · 导读
+% ============================================================
+
+\begin{titlepage}
+\thispagestyle{empty}
+\raggedright
+% ---- 顶部深蓝色块 + 金色分隔线 + 星形图 ----
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[navy] (current page.north west) rectangle ([yshift=-12.30cm]current page.north east);
+  \fill[goldlight] ([yshift=-12.30cm]current page.north west)
+        rectangle ([yshift=-12.37cm]current page.north east);
+  % 右侧：星形概率图（$y$ 与 5 个特征节点，无特征间连边）
+  \begin{scope}[shift={([xshift=12.30cm,yshift=-10.28cm]current page.north west)}]
+    \draw[white,opacity=0.09,line width=0.35pt] (0,0) rectangle (7.02,4.60);
+    % 节点按扇形排布：y 在左，特征按角度 $\pi/6+k\pi/8$ 落在右侧
+    \coordinate (yy) at (1.05,2.30);
+    \foreach \k/\ay in {0/0.52, 1/1.41, 2/2.30, 3/3.19, 4/4.08}{
+      \coordinate (xx\k) at (4.55,\ay);
+      \draw[white,opacity=0.30,line width=0.5pt] (yy) -- (xx\k);
+      \fill[white,opacity=0.72] (xx\k) circle (2.6pt);
+    }
+    \fill[white,opacity=0.92] (yy) circle (3.4pt);
+    \node[font=\scriptsize,text=white,opacity=0.55,anchor=east] at (0.62,2.30) {$y$};
+  \end{scope}
+\end{tikzpicture}%
+\vspace*{0.90cm}
+{\color{white!58!navy}\sffamily\large 机器学习\,\textperiodcentered\,讲义系列\par}
+\vspace{0.90cm}
+{\color{white}\sffamily\bfseries\fontsize{42}{46}\selectfont 朴素贝叶斯\par}
+\vspace{0.62cm}
+{\color{white!82!navy}\sffamily\large 条件独立与计数估计\par}
+\vspace{0.55cm}
+{\color{goldlight}\rule{3.0cm}{1.1pt}\par}
+\vspace{0.46cm}
+{\color{white!58!navy}\itshape\large Naive Bayes Classifier\par}
+
+\vspace*{3.10cm}
+{\color{goldlight}\sffamily\bfseries\Large 第\ 五\ 讲\par}
+\vspace{1.05cm}
+{\color{steel}\sffamily\footnotesize 本\ 讲\ 涵\ 盖\par}
+\vspace{0.26cm}
+{\color{grey}\footnotesize 条件独立\ \ \textperiodcentered\ \ 计数估计\ \ \textperiodcentered\ \ 拉普拉斯平滑
+ \ \ \textperiodcentered\ \ 对数判定\ \ \textperiodcentered\ \ 样本效率\par}
+
+\vspace{3.55cm}
+{\color{navy!30}\rule{3.0cm}{0.4pt}\par}
+\vspace{0.32cm}
+{\color{grey}\footnotesize https://github.com/CyArk-fs/MLnote\par}
+\end{titlepage}
+
+% ============================================================
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\addtocontents{toc}{\protect\footnotesize}
+\tableofcontents
+\thispagestyle{plain}
+\clearpage
+
+% ============================================================
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\section*{导\quad 读}
+\addcontentsline{toc}{section}{导读}
+\markboth{导读}{}
+
+上一讲把「每一类长什么样」这套假设全部丢掉，只留下一条：对数几率是线性的。这一讲往回退一步，但换一条假设——不规定每一类的形状，只规定\emph{维与维之间怎么依赖}。
+
+这样做的理由是算得出来。若 $\bx$ 的 $D$ 个维度都是离散的，第 $j$ 维有 $V_j$ 个取值，那么给定 $y=c$ 时要估的是一张 $V_1\times\cdots\times V_D$ 格的表；$D=20$、每维两个取值，每类就是一百万个数。样本再多也填不满它。朴素贝叶斯的做法是：假定给定类别后各维独立，于是那张表被拆成 $D$ 张一维的小表，参数从指数级掉到线性。
+
+这个假设几乎总是错的，而模型几乎总是好用。这两句话一起成立，才是这一讲真正要讲的东西。五个问题依次展开：
+
+\begin{enumerate}[label=\textcolor{navy}{\bfseries(\arabic*)},leftmargin=2.4em]
+  \item 直接估联合分布，到底要多少参数？为什么 $D=20$ 就走不通？
+  \item 条件独立把「估一个联合分布」换成了什么？为什么解就是计数，一次求导都不用？
+  \item 一个训练集里从没出现过的取值，凭什么能把整类判死？平滑补的到底是什么？
+  \item 判定该在什么尺度上算？为什么可以不算 $p(\bx)$？
+  \item 假设明显不成立，为什么分类还能用？它在什么条件下才会真的坏？
+\end{enumerate}
+
+第三问与第四问之间隔着一层：先知道要补平滑，才看得出对数域里 $\log 0$ 与下溢是同一类问题——都是「一个数太小，乘起来就没了」。所以判定放在平滑之后，而不是之前。
+
+\begin{add}[在分类链上的位置]
+上一讲（逻辑回归）是判别式：只建模 $p(y\mid\bx)$，把「每一类长什么样」全部丢掉。这一讲回到生成式，但走的是另一条约束：不规定分布的形状，只规定依赖的结构。
+
+第三讲的 §7.4 已经把 Gaussian 朴素贝叶斯放进四格表的「各类 $\cdot$ 对角」格，并给了它的判别函数与边界形状。那一节是从协方差看过去的；这一讲从假设看过去——同一条「独立」，在离散特征上是什么样子，参数怎么估，坏了怎么补。两讲不重复：形状的事在第三讲，结构的事在这里。
+\end{add}
+
+\subsection*{读完这一讲，你应当能够}
+
+\begin{enumerate}[label=\textcolor{navy}{\bfseries\arabic*.},leftmargin=2.2em]
+  \item 数出全联合、树、朴素三种结构的参数量，并说明指数是从哪一步来的；
+  \item 写出条件独立假设的严格形式，说清「逐对独立」为什么不够；
+  \item 由对数似然的分解证明各维参数互不牵连，并给出三组闭式解；
+  \item 说明零概率为什么是否决性的，以及它为什么看起来像「整类连坐」；
+  \item 证明拉普拉斯平滑是 Dirichlet 后验均值，并说明它为什么不是 MAP；
+  \item 把判定写到对数域，说明分母为什么可以不算，以及离散情形下它是线性分类器；
+  \item 给出相关特征导致过度自信的机制，并说清「排序不变」成立的条件；
+  \item 用学习曲线说明它与逻辑回归的样本效率差异，并给出选型判据。
+\end{enumerate}
+
+\subsection*{预备知识}
+
+\begin{itemize}
+  \item \textbf{概率}：条件概率、贝叶斯公式、条件独立、类别分布（Categorical）。Dirichlet 分布只需知道名字与「共轭」两个字，§4.3 会补足用到的那一点。
+  \item \textbf{计数与对数}：$\log$ 的单调性、$\log 0=-\infty$、双精度的量级（$10^{-308}$）。这一讲不涉及矩阵微积分，最多用到对角阵。
+  \item \textbf{一个等式约束的拉格朗日乘子}：$\sum_v\theta_v=1$ 下的极大化，§3.2 会用一次。
+\end{itemize}
+
+\subsection*{记号约定}
+
+这一讲的符号不多，但有两处与前面几讲同名不同物，先一次说清。
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}ll@{\hspace{1.6em}}ll@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 记号 & \tabhead 含义 & \tabhead 记号 & \tabhead 含义\\
+\midrule
+$K$ & 类别数 & $D$ & 特征维数\\
+$V_j$ & 第 $j$ 维的取值个数 & $\mathcal V_j$ & 第 $j$ 维的取值集合\\
+$N$ & 样本数 & $N_c$ & 第 $c$ 类样本数\\
+$N_{jvc}$ & 第 $c$ 类中第 $j$ 维取 $v$ 的计数 & $\phi_c$ & 类先验 $p(y=c)$\\
+$\theta_{jvc}$ & 条件概率 $p(x^{(j)}=v\mid y=c)$ & $\alpha$ & 平滑强度（伪计数）\\
+$s_c$ & 类得分（对数域） & $\mathbb{I}[\cdot]$ & 指示函数\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{enumerate}[label=\textcolor{navy}{\bfseries(\arabic*)},leftmargin=2.4em]
+  \item \textbf{$\alpha$ 同名不同物}。第三讲 §5.3 的 $\alpha\in[0,1]$ 是 QDA 向 GDA 收缩的插值系数；本讲的 $\alpha>0$ 是每格的伪计数。两者都叫「强度」，但一个是权重、一个是样本数，不要混。
+  \item \textbf{$\theta$ 的粗细}。第三讲用粗体 $\btheta$ 指整组参数；本讲的 $\theta_{jvc}$ 是标量。全篇不写粗体 $\theta$，就不会撞。
+  \item \textbf{$V_j$ 与 $\bV$}。前四讲的 $\bV$ 是矩阵（特征向量、投影阵），这里的 $V_j$ 是整数。靠粗体区分。
+  \item \textbf{类标}。二分类示例取 $0/1$（与第四讲一致），多分类取 $1,\dots,K$。示例处会写明，不混用。
+\end{enumerate}
+
+\subsection*{阅读路线}
+
+主线三段：为什么假设（\S1）$\to$ 假设是什么（\S2）$\to$ 估什么、怎么估（\S3）。然后两个岔口：\S4 问「估计坏了怎么办」，\S6--\S7 问「假设坏了为什么还能用」。\S5 是工具，把前四节的结果装进一个不会溢出的算法。
+
+若时间只够读两节，选 \S3.2 与 \S4.3。前者证明「解就是计数」，后者证明「平滑是后验均值」——后面每一节都踩在这两块上。
+
+% ============================================================
+%  第 1 节
+% ============================================================
+
+\section{联合分布的估计瓶颈}
+
+先算一笔账。若 $\bx$ 的 $D$ 个维度都是离散的，第 $j$ 维有 $V_j$ 个取值，那么给定 $y=c$ 时要估的是一张 $V_1\times\cdots\times V_D$ 格的表。这一节把这个「格」数换算成参数与样本，再指出两条出路。
+
+\subsection{联合分布的参数规模}
+
+一张 $V_1\times\cdots\times V_D$ 格的概率表，自由参数是它减一（最后一格由归一化决定）。$V_j$ 全相等时记作 $V^D-1$，这是笔记里的写法；一般情形要按各维相乘来写。
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead $D$ & \tabhead 每类自由参数 & \tabhead 每格样本数（$N=10^4$） & \tabhead 每格样本数（$N=10^6$）\\
+\midrule
+10 & $1\,023$ & $9.8$ & $977$\\
+20 & $1\,048\,575$ & $9.5\times10^{-3}$ & $0.95$\\
+30 & $1\,073\,741\,823$ & $9.3\times10^{-6}$ & $9.3\times10^{-4}$\\
+\bottomrule
+\end{tabular}
+\caption{二值特征（$V=2$）下联合分布一侧的账。格数减一就是自由参数；最后一列说明问题不在「样本不够多」，而在「格数比样本多几个数量级」。}
+\label{tab:joint}
+\end{table}
+
+表 \ref{tab:joint} 的最后一列值得停一下：$D=30$ 时哪怕有一百万个样本，平均每 $10^3$ 个格子还分不到一个样本。这不是「估不准」，是「估不了」——绝大多数格子会一直是空的，而空格的参数只能靠猜。
+
+再加一个维度，表格就翻一倍。这条乘法是问题的全部：$D$ 每加 $1$，格数乘以 $V$，而样本只能线性地加。要保证每格平均 $10$ 个样本，$D=30$、$V=2$ 时需要 $10^{10}$ 个样本，比常见数据集大六个数量级。所以「多收集数据」在 $D$ 稍大时就失效了，除非同时把 $D$ 压下去。
+
+与第三讲 §1.2 对照一下，两条困难的量级完全不同：连续情形下，参数的大头是协方差的 $\frac{D(D+1)}2$，随 $D$ 平方增长，矩阵微积分还能派上用场；离散情形下是 $V^D$，随 $D$ 指数增长，再多线性代数也救不了。所以对付它的办法只能是\emph{改假设}，不能是改算法。
+
+\subsection{链式法则与条件的删除}
+
+出路藏在一条恒等式里。对任意联合分布，
+\begin{equation}
+  p(\bx\mid y)=p(x^{(1)}\mid y)\prod_{j=2}^{D}p\bigl(x^{(j)}\mid x^{(1)},\dots,x^{(j-1)},y\bigr).
+  \label{eq:chain}
+\end{equation}
+这一步永远成立，不花任何假设的成本。它只是把「一个 $D$ 维联合」拆成 $D$ 个一维条件，代价是每个条件的列表越来越长。
+
+于是「约束联合分布」这件事，可以精确地表述成「在 \eqref{eq:chain} 的每个因子里，保留多少个条件变量」。保留得越多，参数越多；删光，就是朴素贝叶斯。
+
+\begin{itemize}
+  \item \textbf{全联合}：一个条件都不删。第 $j$ 个因子有 $j-1$ 个条件变量，参数 $V_1\times\cdots\times V_D$。
+  \item \textbf{树结构}：每个因子只留一个父节点。参数 $O(DV^2)$——多出来的一个 $V$ 就是父节点带来的。
+  \item \textbf{朴素}：全部删空，每个因子只剩 $y$。参数 $O(DV)$。
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begingroup
+\begin{tikzpicture}[
+  nd/.style={circle,fill=navy,inner sep=0pt,minimum size=5.2pt},
+  yd/.style={circle,fill=navy2,inner sep=0pt,minimum size=6.4pt},
+  eg/.style={draw=navy!45,line width=0.55pt},
+  lb/.style={font=\scriptsize,text=steel,inner sep=2pt},
+]
+% 三个面板：完全 / 链 / 星（x2 略向左偏，避免 x1--x3 的边穿过它）
+\foreach \ox/\idx in {0/A, 5.35/B, 10.70/C}{
+  \node[yd] (y\idx) at (\ox+0.30,1.10) {};
+  \node[lb,anchor=east] at (\ox+0.02,1.10) {$y$};
+  \node[nd] (a\idx) at (\ox+2.45,2.20) {};
+  \node[nd] (b\idx) at (\ox+2.05,1.10) {};
+  \node[nd] (c\idx) at (\ox+2.45,0.00) {};
+  \draw[eg] (y\idx) -- (a\idx); \draw[eg] (y\idx) -- (b\idx); \draw[eg] (y\idx) -- (c\idx);
+}
+% 完全图：特征两两相连
+\draw[eg] (aA) -- (bA); \draw[eg] (aA) to[bend right=30] (cA); \draw[eg] (bA) -- (cA);
+% 链：x1->x2->x3
+\draw[eg] (aB) -- (bB); \draw[eg] (bB) -- (cB);
+% 面板标签与参数量
+\node[font=\footnotesize\sffamily\bfseries,text=navy] at (1.40,-0.90) {全联合};
+\node[font=\scriptsize,text=steel] at (1.40,-1.33) {$V_1\times\cdots\times V_D$};
+\node[font=\footnotesize\sffamily\bfseries,text=navy] at (6.75,-0.90) {树结构};
+\node[font=\scriptsize,text=steel] at (6.75,-1.33) {$O(DV^2)$};
+\node[font=\footnotesize\sffamily\bfseries,text=navy] at (12.10,-0.90) {朴素};
+\node[font=\scriptsize,text=steel] at (12.10,-1.33) {$O(DV)$};
+\end{tikzpicture}
+\endgroup
+\caption{三种结构，$D=3$ 时画（右侧三个节点是 $x^{(1)},x^{(2)},x^{(3)}$）。差别只在「$x$ 之间留几条边」：全联合留满，树留 $D-1$ 条，朴素一条不留。每删一条边就少一批条件变量，参数随之从指数落到线性。}
+\label{fig:spectrum}
+\end{figure}
+
+图 \ref{fig:spectrum} 是本讲的结构地图。注意它画的是\emph{同一族模型}的三个点，不是三个互不相干的算法：全联合是 $V_1\times\cdots\times V_D$，朴素是 $O(DV)$，树在中间。教材里常把「贝叶斯网络」与「朴素贝叶斯」说成两件事，其实后者是前者把边删光的那一端。
+
+\subsection{参数族与依赖结构}
+
+上一小节只谈了依赖结构。还有一条独立的轴：每个因子用什么分布。
+
+\begin{itemize}
+  \item \textbf{参数族}：连续维用高斯，离散维用类别分布，计数用多项分布。这是「每一维长什么样」。
+  \item \textbf{依赖结构}：维与维之间留几条边。这是「维与维怎么一起变」。
+\end{itemize}
+
+两条轴可以自由组合，这是理解本讲与第三讲关系的关键。第三讲 §7.1 的四格——共享／各自、满／对角——全部在「高斯」这一族内部，四个格子都预设了形状；其中「满／对角」正好对应图上的「有边／无边」，「共享／各自」则是参数的共享方式，不在图里。本讲固定星形图，动的是参数族，所以它可以配离散特征、配混合特征，也可以在连续特征上与高斯组合成 Gaussian NB（第三讲 §7.4 的「各类 $\cdot$ 对角」）。
+
+两者能拆开，是因为因子分解只规定「每个因子含哪些变量」，不规定「因子的函数形式」。给定图，每一维仍可选高斯、类别或多项；给定参数族，图仍可密可疏。把这两件事混成一件，就会得出「朴素贝叶斯一定是高斯判别分析的特例」这种半对半错的结论——它只是两者在连续特征上的交点。
+
+\begin{keybox}[两条约束不能并成一条阶梯]
+教材常把 QDA $\to$ GDA $\to$ 朴素贝叶斯排成「从强到弱」的三级，暗示参数逐级减少。这是错的：约束有两个来源，混成一条线就会算错账。最直接的反例是 $(D,K)=(2,2)$：Gaussian NB 要 $9$ 个参数，GDA 只要 $8$ 个（第三讲 §7.1 的表）。再往上看，$2KD$ 与 $V^D$ 根本不在同一条轴上——前者随 $D$ 线性，后者指数。
+\end{keybox}
+
+\begin{add}[与第三讲 §7.4 的分工]
+对角高斯的判别函数、轴平行的二次边界、以及「Gaussian NB 一定更省参数」这个说法的适用条件，第三讲 §7.4 都写完了，这里不重推。本讲只在 §6 补一件事：在\emph{离散}特征上，「独立」这条假设坏掉时具体长什么样——那是第三讲没有覆盖的部分。
+\end{add}
+
+% ============================================================
+%  第 2 节
+% ============================================================
+
+\section{条件独立假设}
+
+上一节把「估不动」归因于参数的指数增长，并指出两条出路。这一节把第二条说清楚：给定类别后，各维独立。说清楚包括三件事——假设怎么写、图上怎么读、以及它\emph{不}意味着什么。
+
+\subsection{假设的表述}
+
+工作形式只有一行：
+\begin{equation}
+  p(\bx\mid y)=\prod_{j=1}^{D}p(x^{(j)}\mid y).
+  \label{eq:indep}
+\end{equation}
+但它的严格含义比这一行强。\eqref{eq:indep} 等价于：给定 $y$ 后，各维\emph{相互}独立，即对任意子集 $S\subseteq\{1,\dots,D\}$，
+\begin{equation}
+  p(\bx_S\mid y)=\prod_{j\in S}p(x^{(j)}\mid y).
+  \label{eq:indep-subset}
+\end{equation}
+只验逐对独立 $x^{(j)}\perp x^{(k)}\mid y$ 是不够的——逐对是必要条件，不是充分条件。标准反例：$x^{(1)},x^{(2)}$ 独立公平地取 $0/1$，令 $x^{(3)}=x^{(1)}\oplus x^{(2)}$，则三者两两独立（任取两个，四种组合各占 $1/4$），但 $x^{(3)}$ 被前两者完全决定，三者不相互独立。
+
+$D=2$ 时两种说法重合，所以这个区别只在 $D\ge3$ 时才显现。多数教材写逐对式，是因为它在二维下够用、在高维下好写；但定义要按 \eqref{eq:indep-subset} 记，否则遇到异或型的依赖会判断错。
+
+\begin{dfn}[条件独立假设]
+给定类别 $y$ 后，特征各维相互独立：
+\[
+  p(\bx\mid y)=\prod_{j=1}^{D}p(x^{(j)}\mid y)
+  \quad\Longleftrightarrow\quad
+  p(\bx_S\mid y)=\prod_{j\in S}p(x^{(j)}\mid y),\ \ \forall S\subseteq\{1,\dots,D\}.
+\]
+逐对条件独立 $x^{(j)}\perp x^{(k)}\mid y$ 只是它的必要条件；「朴素」二字即来自这条强假设。
+\end{dfn}
+
+还有三个限定必须说到，否则后面容易用错：
+
+\begin{enumerate}[label=\textcolor{navy}{\bfseries(\arabic*)},leftmargin=2.4em]
+  \item 它是\textbf{给定 $y$ 之后}的独立，不是「特征彼此独立」。§2.3 会看到，NB 甚至可以制造总体相关。
+  \item 它约束的是\textbf{生成分布} $p(\bx\mid y)$，不是分类器 $p(y\mid\bx)$。后者是前者的推论，不是假设。
+  \item 它对\textbf{每一类分别成立}，各类的参数各自一套——这与第三讲的「各类一个高斯」是同一种安排。
+\end{enumerate}
+
+这条假设为什么值得接受？因为它把「需要覆盖组合」换成了「只需要覆盖单值」。估 \eqref{eq:theta} 时，第 $j$ 维的每个取值只要在某一类里出现过几次即可，不需要「所有维的某个组合」同时出现。样本利用率从「覆盖格子」变成「覆盖取值」——后者是 $D\cdot V$ 的量级，前者是 $V^D$。这不是「更聪明的估计」，是「更便宜的问题」。
+
+\subsection{概率图表示}
+
+\eqref{eq:indep} 对应一张很简单的有向图：$y$ 指向每个 $x^{(j)}$，$x$ 之间没有边（图 \ref{fig:spectrum} 最右那个面板）。因子分解就是图的直接读数——图上每个节点只连 $y$，所以每个因子只条件于 $y$。
+
+反过来读更有用：一般有向图模型里，$p(x^{(j)}\mid \mathrm{pa}(x^{(j)}),y)$ 的父节点集合决定这个因子含几个变量。父节点越多，因子越贵。朴素贝叶斯取父节点集合为空，是这条谱系上最省的一端；参数量在 §1.2 已经算过，这里不再重复。
+
+结构学习的困难也在这里：$D$ 个节点的有向无环图数量随 $D$ 超指数增长，搜索空间极大。NB 用「一条边都不留」这个唯一的选择绕开了搜索，代价是假设的强度。
+
+\begin{add}[结构学习]
+从数据里把边学出来，是贝叶斯网络那条线（TAN、AODE 都是它的简化版）。本讲只固定结构、不学结构：星形是给定的，讨论的是在这张图下怎么估参数、估出来会怎么坏。
+\end{add}
+
+\paragraph{缺失维度} 因子分解还有一个免费的副产品。预测时若 $x^{(j)}$ 缺失，直接把这个因子删掉即可——因为 $\sum_v p(x^{(j)}=v\mid y)=1$，删掉它等于对这一维求边缘，不需要重估任何参数，也不需要重新分解协方差。第三讲 §1.3 说过「生成式模型能沿缺失维边缘化」；在 NB 里这一步是免费的，而在 GDA 里还要对协方差做分块。
+
+前提是缺失与取值无关。若缺失本身携带信息（医生只在怀疑时才测某项），删因子估的是「被观测到的那个子分布」，不是原来的 $p(\bx\mid y)$。这一条在工程上经常被忽略。
+
+\subsection{条件独立与边缘独立}
+
+最容易被误读的一点：条件独立\emph{不}蕴含边缘独立。
+
+取两类等先验，$x^{(1)},x^{(2)}$ 在给定类别后独立同分布，且
+\[
+  p(x^{(j)}=1\mid y=1)=0.9,\qquad p(x^{(j)}=1\mid y=0)=0.1 .
+\]
+于是总体上
+\[
+  p(x^{(j)}=1)=\tfrac12(0.9)+\tfrac12(0.1)=0.5,
+\]
+而
+\[
+  p(x^{(1)}=1,x^{(2)}=1)=\tfrac12(0.9)^2+\tfrac12(0.1)^2=0.41\ne 0.25=p(x^{(1)}=1)p(x^{(2)}=1).
+\]
+两维在总体上正相关：协方差 $0.41-0.25=0.16$，相关系数 $0.16/(0.5\times0.5)=0.64$。但在每一类内部，它们严格独立。
+
+\begin{prop}[条件独立不蕴含边缘独立]
+存在分布使 $x^{(1)}\perp x^{(2)}\mid y$ 成立，而 $x^{(1)}$ 与 $x^{(2)}$ 在总体上相关。上例即证：协方差 $0.16$，相关系数 $0.64$。
+\end{prop}
+
+这个反例说明的不是假设有漏洞，而是假设的内容：NB 允许、甚至\emph{制造}总体相关——两个特征都由 $y$ 决定，自然在总体上同向变动；它禁止的只是「同类内部的残余相关」。把「朴素」读成「特征必须互不相关」，是这一讲最常见的误读。
+
+\begin{warn}[误读的代价]
+按「特征必须互不相关」去做特征筛选，会删掉本来有用的维。判据不是「两维相不相关」，而是「给定类别后还相不相关」——后者要在类内分组算，不能看总体相关系数。
+\end{warn}
+
+% ============================================================
+%  第 3 节
+% ============================================================
+
+\section{参数的分离估计}
+
+假设定完，接下来是估。这一节要证明一件事：在 \eqref{eq:indep} 下，极大似然解就是计数——没有优化、没有迭代、没有凸性讨论。闭式解来得太容易，反而值得把每一步写清楚。
+
+\subsection{似然按维分解}
+
+把 \eqref{eq:indep} 代进对数似然，按类别重排：
+\begin{equation}
+  \ell(\phi,\theta)
+  =\sum_{i=1}^{N}\log p(\bx_i\mid y_i)+\sum_{i=1}^{N}\log\phi_{y_i}
+  =\sum_{c=1}^{K}N_c\log\phi_c
+   +\sum_{j=1}^{D}\sum_{c=1}^{K}\sum_{v=1}^{V_j}N_{jvc}\log\theta_{jvc}.
+  \label{eq:decomp}
+\end{equation}
+第二项是离散维的写法；连续维把 $\log\theta_{jvc}$ 换成高斯对数密度，求和号里的 $v$ 随之消失，但\emph{按 $(j,c)$ 分块}这件事不变。
+
+写成指示函数更清楚。对 $y_i=c$ 的样本，
+\[
+  p(\bx_i\mid y_i)=\prod_{j=1}^{D}\prod_{v=1}^{V_j}\theta_{jvc}^{\mathbb{I}[x_i^{(j)}=v]},
+\]
+取对数再对 $i$ 求和，指数上的指示函数变成计数：
+\[
+  \sum_{i:y_i=c}\log p(\bx_i\mid y_i)
+  =\sum_{j=1}^{D}\sum_{v=1}^{V_j}
+    \Bigl(\sum_{i:y_i=c}\mathbb{I}[x_i^{(j)}=v]\Bigr)\log\theta_{jvc}
+  =\sum_{j,v}N_{jvc}\log\theta_{jvc}.
+\]
+这一步没有任何近似：\eqref{eq:decomp} 只是它的汇总写法。
+
+\begin{prop}[似然的可分离性]
+在条件独立假设下，对数似然 \eqref{eq:decomp} 是若干互不重叠的参数块的\emph{和}：$\{\phi_c\}$ 只出现在第一项，每一对 $(j,c)$ 只出现在自己的那一块。因此逐块极大化与联合极大化给出同一组解。
+\end{prop}
+
+\begin{proof}
+把 \eqref{eq:indep} 代入并取对数，$\log\prod_j=\sum_j\log$，得到 $\sum_i\sum_j\log p(x_i^{(j)}\mid y_i)$。再按「类别 $c$、维度 $j$、取值 $v$」三重分组：每个样本在每个维度上只贡献一个取值，所以计数恰好是 $N_{jvc}$。第一项按 $y_i=c$ 分组得 $N_c$。两块的自变量集合不相交，故和式的极大等于各块极大之和。
+\end{proof}
+
+这正是第三讲 §2.3「三组参数的独立性」的同一条论证，只是这里更干净：没有协方差，块与块之间连交叉项都不可能出现。第三讲还要用剖面似然说明「$\hat{\bmu}_c$ 与 $\bSigma$ 无关」，这里不需要——参数块在似然里就是加性分离的。
+
+\subsection{闭式解与计数}
+
+先验那一块：在 $\sum_c\phi_c=1$ 下极大化 $\sum_cN_c\log\phi_c$，拉格朗日条件 $N_c/\phi_c=\lambda$ 给出 $\phi_c\propto N_c$，归一化后
+\begin{equation}
+  \hat\phi_c=\frac{N_c}{N}.
+  \label{eq:phi}
+\end{equation}
+
+条件概率那一块：固定 $(j,c)$，在 $\sum_v\theta_{jvc}=1$ 下极大化 $\sum_vN_{jvc}\log\theta_{jvc}$。同样的推导给出
+\begin{equation}
+  \hat\theta_{jvc}=\frac{N_{jvc}}{N_c}.
+  \label{eq:theta}
+\end{equation}
+写成拉格朗日乘子只有两行，但值得写：读者容易以为「归一化会自动满足」，其实 $\sum_v\hat\theta_{jvc}=1$ 是被约束逼出来的，不是凑巧。
+
+连续维则是熟悉的均值与方差：
+\begin{equation}
+  \hat\mu_{jc}=\frac{1}{N_c}\sum_{i:y_i=c}x_i^{(j)},\qquad
+  \hat\sigma_{jc}^2=\frac{1}{N_c}\sum_{i:y_i=c}\bigl(x_i^{(j)}-\hat\mu_{jc}\bigr)^2 .
+  \label{eq:gauss-mle}
+\end{equation}
+分母用 $N_c$ 而非 $N_c-1$，与第三讲的 $\bS_c$ 同约定。两种约定在 $N_c$ 大时无差别，在小类上会差一点——而小类正是 NB 最容易出问题的地方，所以口径要统一。
+
+\begin{prop}[三组闭式解]
+在条件独立假设与相应的参数族下，极大似然解由 \eqref{eq:phi}、\eqref{eq:theta}、\eqref{eq:gauss-mle} 给出。它们只依赖计数 $N_c$、$N_{jvc}$，不需要任何迭代。
+\end{prop}
+
+\begin{keybox}[这一讲没有优化，只有计数]
+第四讲的逻辑回归，每一步要解一个线性方程组（IRLS）；这一讲一次 \texttt{value\_counts} 就结束。闭式解的好处是快、可解释、无初值问题；代价在后面——它对零计数毫无防御，而零计数在离散高维数据里遍地都是。
+\end{keybox}
+
+\subsection{参数量的对照}
+
+把两边的账并排放。为公平，两行都含类先验的 $K-1$ 个参数。
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 结构 & \tabhead 每类 & \tabhead 全部（含先验） & \tabhead 数值（$D=20,V=2,K=10$）\\
+\midrule
+全联合 & $V^D-1$ & $K(V^D-1)+(K-1)$ & $10\,485\,759$\\
+朴素（离散） & $\sum_j(V_j-1)$ & $K\sum_j(V_j-1)+(K-1)$ & $209$\\
+\bottomrule
+\end{tabular}
+\caption{离散特征下两端的参数量。中间一列是通式，最后一列是同一配置下的数值：差四个数量级。}
+\label{tab:param}
+\end{table}
+
+一般形式是 $O\!\left(K\sum_jV_j\right)$，不是 $O(KDV)$——只有 $V_j$ 全相等时才能写成后者。笔记里的 $O(CpK)$ 按这个改。
+
+连续侧一句话带过。Gaussian NB 的参数是 $2KD+(K-1)$，GDA 是 $KD+\frac{D(D+1)}2+(K-1)$，两者之差
+\begin{equation}
+  2KD-\Bigl(KD+\tfrac{D(D+1)}2\Bigr)=D\Bigl(K-\tfrac{D+1}2\Bigr).
+  \label{eq:paramdiff}
+\end{equation}
+所以 $K=(D+1)/2$ 是分界：小于它 NB 更省，大于它 NB 更贵。$(D,K)=(20,10)$ 时差 $-10$（$409$ 对 $419$），不是巧合，而是 $K$ 离 $10.5$ 只有半步。这条通式与第三讲 §7.1 的分界 $KD=\frac{D(D+1)}2$ 是同一个式子——两讲的账在这里并成一本。
+
+\subsection{三种似然}
+
+「每一维用什么分布」有三张常见的选择：
+
+\begin{itemize}
+  \item \textbf{Gaussian}：连续维，$p(x^{(j)}\mid y=c)=\Ncal(\mu_{jc},\sigma_{jc}^2)$。Gaussian NB 就是它。
+  \item \textbf{Categorical}：离散维，$p(x^{(j)}=v\mid y=c)=\theta_{jvc}$，$\sum_v\theta_{jvc}=1$。二值特征是它的特例（Bernoulli）。
+  \item \textbf{Multinomial}：计数维（文档里每个词出现几次），整篇文档看作从词表分布里抽 $n$ 次。它的似然是 $\prod_v\theta_{vc}^{n_v}$，MLE 仍是计数比 $\hat\theta_{vc}=n_{vc}/n_c$，其中 $n_{vc}$ 是第 $c$ 类文档中词 $v$ 的总出现次数。
+\end{itemize}
+
+混合特征因此变得容易：每一维自选参数族，互不影响。这是 NB 相对 GDA/QDA 的独有能力——后者需要一个联合协方差，没法一半离散、一半连续。
+
+\begin{add}[多项模型：两处需要留神]
+文档 = 从词表的类别分布 $\theta_{\cdot c}$ 里独立抽 $n$ 次，$\sum_v\theta_{vc}=1$ 归一在\textbf{词表}上，而不是在「每一维的取值」上。两个后果：
+
+(i) 同一个 $\alpha$，在多项模型里按\emph{词次数}归一（$N_c$ 是全类词数），在 Categorical 里按\emph{文档数}归一。两者的平滑强度能差几个数量级，调参时不能照搬。
+
+(ii) 归一化本身引入了词与词之间的负相关：一个词的概率高，别的就得低。所以「条件独立」在多项模型里是另一种意义上的近似——它假设的是「给定类别后每次抽词独立」，不是「词与词独立」。
+
+这一段超出笔记的范围，是否展开见写作时的取舍。
+\end{add}
+
+% ============================================================
+%  第 4 节
+% ============================================================
+
+\section{稀疏计数的修正}
+
+计数有一个致命的边界情形：某个格子是空的。$\hat\theta=0$ 一旦进入连乘，整项归零。这一节先把机制说准，再讲平滑，最后讲平滑没解决的那一半。
+
+\subsection{零概率的传播}
+
+机制是\textbf{逐格否决}，不是「整类报废」。若 $\hat\theta_{jvc}=0$，那么任何在第 $j$ 维取值为 $v$ 的测试点，第 $c$ 类的后验都是 $0$——其余 $D-1$ 维再强也无济于事。注意它否决的是「这一类在这个点上」，不是「这一类在所有点上」：训练集里那些没取到 $v$ 的样本，照样能被正确分类。
+
+「整类连坐」是涌现效果，不是机制。当 $V^D\gg N_c$ 时空格遍地，一个测试点撞上空格的概率随 $D$ 迅速趋近于 $1$：若各格等可能，单维空格率是 $1-(1-1/V)^{N_c}$，$N_c=10,V=10$ 时约 $0.35$，于是 $D=10$ 的一个测试点至少撞上一个空格的概率约
+\[
+  1-0.65^{10}\approx0.99 .
+\]
+到这一步，看上去才像「整类被毁掉」。机制与效果要分开讲，否则做题时会一上来就说「这类全废了」，而实际上只废了一部分点。
+
+连续情形是同一个毛病的另一种形态：$\hat\sigma_{jc}^2=0$（该类该维只有一个样本）时除零，得分在 $x^{(j)}\ne\hat\mu_{jc}$ 处发散。两者的共同点是「某个估计落在边界上」。
+
+\begin{warn}[零概率是否决性的]
+它出现在「训练集没见过」，不是「不可能发生」。做题时先定位是哪个 $(j,v,c)$ 的格子为空，再判断哪些测试点被它否决——不要直接说「这类全废了」。
+
+第三讲 §6.2 的警告框第 (3) 条只处理了类先验 $\hat\phi_c=0$，这里处理的是条件概率表，规模差着 $D$ 倍。
+\end{warn}
+
+\begin{exm}[逐格否决与它的边界]
+六个样本、两个二值特征、两类各三个：
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 样本 & 1 & 2 & 3 & 4 & 5 & 6\\
+\midrule
+$x^{(1)}$ & 1 & 1 & 0 & 0 & 0 & 1\\
+$x^{(2)}$ & 1 & 0 & 1 & 0 & 0 & 0\\
+$y$ & 1 & 1 & 1 & 0 & 0 & 0\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+类 $1$ 的两维都见过：$\hat\theta_{1,1,1}=2/3$，$\hat\theta_{1,0,1}=1/3$，$\hat\theta_{2,1,1}=2/3$，$\hat\theta_{2,0,1}=1/3$。类 $0$ 在第二维上只见过 $0$：$\hat\theta_{2,1,0}=0$，$\hat\theta_{2,0,0}=1$。
+
+取 $x=(1,1)$：类 $0$ 被第二维否决（$s_0=-\infty$），判类 $1$。取 $x=(1,0)$：类 $0$ 没有被否决，
+\[
+  s_1=\log\tfrac12+\log\tfrac23+\log\tfrac13=-2.20,\qquad
+  s_0=\log\tfrac12+\log\tfrac13+\log1=-1.79,
+\]
+判类 $0$。同一个模型，类 $0$ 在 $(1,1)$ 上死了、在 $(1,0)$ 上活着——否决是逐点的，不是整类。
+\end{exm}
+
+\subsection{拉普拉斯平滑}
+
+修正的办法是给每个格子先放几个虚拟样本：
+\begin{equation}
+  \hat\theta_{jvc}=\frac{N_{jvc}+\alpha}{N_c+\alpha V_j},\qquad \alpha>0 .
+  \label{eq:smooth}
+\end{equation}
+\begin{prop}[平滑估计的归一性]
+对任意 $\alpha>0$，\eqref{eq:smooth} 给出的 $\hat\theta_{\cdot c}$ 落在单纯形内部，且 $\sum_v\hat\theta_{jvc}=1$；当 $\alpha\to0$ 时逐格收敛到 MLE \eqref{eq:theta}。
+\end{prop}
+
+\begin{proof}
+求和即得归一。$\alpha\to0$ 时分子分母同趋于 $N_{jvc}$ 与 $N_c$，逐格收敛（$N_c>0$ 时）。
+\end{proof}
+
+$\alpha=1$ 就是拉普拉斯平滑：「先数一遍，再给每格加一个」。归一化为什么还成立？因为分子分母同加了 $\alpha V_j$：
+\[
+  \sum_{v=1}^{V_j}\frac{N_{jvc}+\alpha}{N_c+\alpha V_j}
+  =\frac{N_c+\alpha V_j}{N_c+\alpha V_j}=1 .
+\]
+这也解释了分母为什么必须是 $N_c+\alpha V_j$ 而不是 $N_c+\alpha$：要按格数补齐，归一才成立。
+
+$\alpha=1$ 有个老名字：拉普拉斯的接续法则（rule of succession）。原始问题是「太阳明天还会升起吗」，见过 $n$ 次之后给出的答案是 $(n+1)/(n+2)$——正是二值、$\alpha=1$ 的特例。所以「加一」不是拍脑袋，它对应「事先认为每种结果都见过一次」的先验。
+
+回到上一小节的例题：加 $\alpha=1$ 后，类 $0$ 在第二维上的估计从 $0$ 变成 $1/5$，$x=(1,1)$ 的得分从 $-\infty$ 变为 $-3.22$，类 $1$ 为 $-1.71$，判定不变。$x=(1,0)$ 的余量则从 $0.405$ 缩到 $0.288$。平滑没有改变结论，改变的是「有多险」。
+
+与第三讲 §5 的收缩对照一下：两者都是把估计拉向一个中心，这里是拉向均匀分布 $1/V_j$，那里是拉向共享协方差。第三讲的 $\kappa$ 是均值的先验强度，这里的 $\alpha$ 是每格的伪计数——语义同源，作用对象不同。
+
+\subsection{狄利克雷先验}
+
+平滑不是技巧，是贝叶斯估计。给 $\theta_{\cdot c}$ 一个对称 Dirichlet 先验：
+\[
+  p(\theta_{\cdot c})=\mathrm{Dir}(\alpha,\dots,\alpha)
+  \;\propto\;\prod_{v}\theta_{vc}^{\alpha-1}.
+\]
+似然是 $\prod_v\theta_{vc}^{N_{jvc}}$，两者相乘，后验还是 Dirichlet：
+\begin{equation}
+  \theta_{\cdot c}\mid\mathcal D\sim\mathrm{Dir}\bigl(N_{j1c}+\alpha,\dots,N_{jV_jc}+\alpha\bigr).
+  \label{eq:posterior}
+\end{equation}
+后验均值就是 \eqref{eq:smooth}。所以「加 $\alpha$」的确切含义是：在每个格子上先放 $\alpha$ 个虚拟样本，再用后验均值作估计。共轭的好处是更新只需加法：先验的伪计数 $\alpha$ 加上观测计数 $N_{jvc}$，就是后验的参数，不必做任何积分。工程实现里「平滑」只有一行，原因就在这里。
+
+\begin{warn}[平滑是后验均值，不是 MAP]
+这一点必须写准。$\alpha=1$ 时，Dirichlet 的\textbf{众数}（MAP）是
+\[
+  \frac{N_{jvc}+\alpha-1}{N_c+V_j(\alpha-1)}=\frac{N_{jvc}}{N_c},
+\]
+恰好退回 MLE——「加一」在 MAP 下完全消失。$\alpha<1$ 时众数落在单纯形的顶点上，零概率又回来了。
+
+所以拉普拉斯平滑对应的是后验\emph{均值}，不是 MAP。笔记写「取均匀 Dirichlet 先验做贝叶斯估计」，方向是对的；正文要把「哪种贝叶斯估计」说死。
+\end{warn}
+
+顺带一句：第三讲 §5 的收缩解也是后验均值（高斯先验下均值与众数重合，所以那里两种说法不冲突）。同一个估计量在不同模型上出现两次，不是巧合。
+
+\subsection{$\alpha$ 的取值}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead $\alpha$ & \tabhead 估计 & \tabhead 读法 & \tabhead 风险\\
+\midrule
+$\to0$ & $N_{jvc}/N_c$ & MLE & 零概率回来\\
+$1$ & $(N_{jvc}+1)/(N_c+V_j)$ & 每格一个伪样本 & $V_j\gg N_c$ 时被先验主导\\
+$\to\infty$ & $1/V_j$ & 均匀分布 & 数据完全不用\\
+\bottomrule
+\end{tabular}
+\caption{$\alpha$ 的三个极限。中间那一行是默认值，也是最容易被误当成「无害」的一行。}
+\label{tab:alpha}
+\end{table}
+
+表 \ref{tab:alpha} 中间一行有个陷阱：$\alpha=1$ 在 $V_j$ 很大时并不温和。若 $V=10^4$、$N_c=10^3$，每格的估计都在 $1/(1.1\times10^4)$ 附近，数据只占一成，先验占九成。文本任务里 $\alpha$ 常取 $10^{-2}\sim10^{-1}$，正是因为词表远大于单类词次数。
+
+还有一条反直觉的：$\alpha<1$ 不是「更保守」。当 $N_c>V_jN_{jvc}$ 时，平滑后的估计\emph{高于} MLE——每个观测到的格子被推得更高，模型反而更自信。平滑的方向不是单调的「向均匀靠」，它取决于 $\alpha$ 与计数的相对大小。
+
+\marginnote{$\alpha<1$ 时，已观测格子的估计可能高于 MLE，别把「平滑」一律理解成「压平」。}
+
+实现上有两处容易混：\texttt{sklearn} 的 \texttt{alpha} 是伪计数，作用在条件概率上；\texttt{GaussianNB} 的 \texttt{var\_smoothing} 加在\emph{方差}上（乘最大方差的一个比例），是另一套机制。名字像，作用对象完全不同。
+
+\begin{add}[$\alpha$ 怎么选]
+用交叉验证选，不要拍。候选范围按 $V_j/N_c$ 的量级定：$V_j$ 远大于 $N_c$ 时往小取，否则 $\alpha=1$ 就够。文本分类的常见起点是 $0.01$ 到 $0.1$。
+\end{add}
+
+\subsection{平滑的残余}
+
+平滑把 $0$ 换成了一个小数，但那个小数取对数之后仍然可以很大：
+\[
+  \log\frac{\alpha}{N_c+\alpha V_j}
+  =-\log\frac{N_c+\alpha V_j}{\alpha}.
+\]
+$\alpha=1$、$N_c=10$、$V_j=100$ 时约 $-4.7$；十来个这样的维，就压过几十个「每维 $-1$」的维。
+
+所以修正只挡住了「严格等于零」，挡不住「极小」。判定仍然是单维说了算——这一条与 §6.1 的双重计数是两回事：一个来自小计数（单维估计的方差），一个来自相关（多维证据的重复）。
+
+二分类时（类标 $0/1$，与第四讲一致）可以写成 $|\log\frac{p(x^{(j)}\mid1)}{p(x^{(j)}\mid0)}|$ 任意大；多分类时是两两对数比之差，结论相同。
+
+\begin{warn}[平滑只防零，不防小]
+$\log$ 之后 $10^{-6}$ 仍然是 $-13.8$，足以压倒十项 $-1$。诊断的办法是看单维对数比的分布，而不是看有没有零——零已经被补掉了，问题还在。
+\end{warn}
+
+% ============================================================
+%  第 5 节
+% ============================================================
+
+\section{对数判定规则}
+
+参数估完，判定只剩一件事：比较 $K$ 个数。但直接比会溢出，所以要换到对数域；换过去之后还会发现两件「可以不算」的事。
+
+\subsection{分母的约去}
+
+贝叶斯公式给出
+\begin{equation}
+  p(y=c\mid\bx)=\frac{p(\bx\mid y=c)\phi_c}{p(\bx)},
+  \qquad p(\bx)=\sum_{c=1}^{K}p(\bx\mid y=c)\phi_c .
+  \label{eq:post}
+\end{equation}
+分母与 $c$ 无关，所以比较后验等价于比较分子：
+\begin{equation}
+  \hat y=\argmax_{c\in\{1,\dots,K\}}\ \phi_c\prod_{j=1}^{D}p\bigl(x^{(j)}\mid y=c\bigr).
+  \label{eq:map}
+\end{equation}
+
+\begin{prop}[分母可以不算]
+$\argmax_c p(y=c\mid\bx)=\argmax_c \phi_c\,p(\bx\mid y=c)$ 对任意 $\bx$ 成立；分母只影响后验的数值，不影响判定。
+\end{prop}
+
+\begin{proof}
+$p(y=c\mid\bx)=u_c(\bx)/p(\bx)$，其中 $p(\bx)>0$ 与 $c$ 无关。正数除法保序，故 $\argmax$ 不变。
+\end{proof}
+
+推论：NB 从不估 $p(\bx)$。在独立性假设下它给出的 $p(\bx)$ 通常离真值很远，所以不适合拿它做密度估计或异常检测——这也是 §7.3 把它排除在这两类任务之外的原因。
+
+\subsection{对数空间}
+
+\eqref{eq:map} 里的连乘有 $D$ 项。$p\approx0.1$ 时，$D\ge308$ 连乘就跌到双精度\emph{正规数}下界 $2.2\times10^{-308}$ 以下，进入 subnormal 区；$D\approx324$ 才真正归零。两件事要分开说：教科书常写成「$D>300$ 就下溢」，把「精度垮掉」与「变成 $0$」混成一句。稀疏文本的 $D$ 是 $10^4$ 量级，必然发生。
+
+取对数即可。$\log$ 是单调变换，不改 $\argmax$；连乘变连加，量级从 $10^{-300}$ 回到 $O(D)$ 的负数。为什么必须是 $\log$ 而不别的压缩函数，第四讲 §2.1 已经从「乘性证据要可加」证过，这里引用，不重推。
+
+与第三讲 §6.2 的分工也值得说一句：那里给 logsumexp 是为了\emph{要概率}（算 AUC、做校准）；这一段只需要\emph{要标签}，比 $s_c$ 的大小即可。两者判定结果一致，差别只在要不要归一化后的数值。
+
+两类时连 logsumexp 都不必：$p(y=1\mid\bx)=\sigma(s_1-s_0)$，$\sigma$ 是第四讲的 sigmoid。多类时才需要 softmax 归一。这条式子把 §5.3 的得分接回第四讲的概率输出——两个模型的判定式只差一个 $s_c$ 的定义。
+
+\begin{warn}[顺序错了就白算]
+先算概率再取对数，下溢已经发生，取对数只能得到 $-\infty$。正确顺序是先在对数域求和，需要概率时再用 logsumexp 归一。
+\end{warn}
+
+\subsection{证据的可加性}
+
+定义类得分
+\begin{equation}
+  s_c(\bx)=\log\hat\phi_c+\sum_{j=1}^{D}\log\hat p\bigl(x^{(j)}\mid c\bigr),
+  \qquad \hat y=\argmax_c s_c(\bx).
+  \label{eq:score}
+\end{equation}
+读法是：先验是起点，每一维投一票，票面是 $\log$ 条件概率。这也是「证据累加」这个说法的来源——每一维的贡献可以单独看、单独删，不需要重算别的维。
+
+\begin{dfn}[类得分]
+$s_c(\bx)$ 是第 $c$ 类的对数域得分。它与第三讲的判别函数 $\delta_c$ 地位相同：都是「越大越像第 $c$ 类」；$\delta_c$ 是高斯族的闭式，$s_c$ 是离散族的闭式。
+\end{dfn}
+
+离散情形有两种写法，都值得看一眼。one-hot 编码下，
+\begin{equation}
+  s_c(\bx)=\log\phi_c+\sum_{j=1}^{D}\sum_{v=1}^{V_j}\mathbb{I}\bigl[x^{(j)}=v\bigr]\log\theta_{jvc},
+  \label{eq:onehot}
+\end{equation}
+这是对 $D\cdot V$ 维编码向量 $\bz$ 的线性函数：权重 $w_{c,(j,v)}=\log\theta_{jvc}$，截距 $b_c=\log\phi_c$。多项模型下，
+\begin{equation}
+  s_c(\bn)=\log\phi_c+\sum_{v=1}^{V}n_v\log\theta_{vc},
+  \label{eq:count}
+\end{equation}
+这里 $\bn$ 是计数向量，原来的维下标 $j$ 退化了（见 §3.4），但对 $\bn$ 仍然是线性的。
+
+\begin{keybox}[离散朴素贝叶斯是线性分类器]
+无论 Categorical（one-hot）还是 Multinomial（计数），$s_c$ 都是对输入编码的线性函数，权重就是对数概率表。它与第四讲的逻辑回归同族，只是训练方式不同：一个由计数定权重，一个由梯度定权重。
+\end{keybox}
+
+两类时把差分写出来，结构更清楚：
+\begin{equation}
+  s_1-s_0=\log\frac{\phi_1}{\phi_0}
+  +\sum_{j=1}^{D}\log\frac{\hat p(x^{(j)}\mid1)}{\hat p(x^{(j)}\mid0)}.
+  \label{eq:diffscore}
+\end{equation}
+这就是「先验对数比 + 各维对数似然比之和」。它的绝对值是判定的\emph{余量}：接近 $0$ 时结论不稳，某一维的小扰动就能翻转；绝对值大时，要翻转需要一组维同时改口。§6.1 的例子正是余量不足时被一列重复特征推过了阈值。
+
+% ============================================================
+%  第 6 节
+% ============================================================
+
+\section{相关特征的后果}
+
+到这里模型的所有零件都齐了。这一节开始拆它：独立假设不成立时，错在哪里。极端似然比已经移入 §4.5，本节只谈相关。
+
+\subsection{相关特征的双重计数}
+
+若两维高度相关，同一份证据会被计入两次：得分被放大，后验被推向 $0/1$。这是 NB 过自信的主要来源。
+
+复制一维的效果可以精确写出。设原得分为 $s$，把第 $j$ 维原样再放一列，新得分是
+\[
+  s'=s+\log\frac{p(x^{(j)}\mid 1)}{p(x^{(j)}\mid 0)}
+\]
+（二分类，类标 $0/1$）。也就是说，该维的对数似然比被\emph{再算一遍}，合并贡献是 $2\log LR_j$。所以「重复特征无害」是错的——它不是不变，是偏袒：模型对这条证据的信心翻了一倍。
+
+\begin{prop}[复制一维等于双倍权重]
+设特征 $x^{(j)}$ 被复制为两列，两列的参数估计相同。则二分类下复制前后的对数似然比之差恰为 $\log LR_j$，即该维的权重由 $1$ 倍变为 $2$ 倍。
+\end{prop}
+
+\begin{proof}
+复制列的 $\hat\theta$ 与原列相同，故 $\log$ 得分中多出一项 $\log\hat p(x^{(j)}\mid c)$；两类相减，多出的正是 $\log LR_j$。
+\end{proof}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 类别 & \tabhead $p(x^{(1)}=1\mid y)$ & \tabhead $p(x^{(2)}=1\mid y)$\\
+\midrule
+$y=1$ & $0.9$ & $0.1$\\
+$y=0$ & $0.3$ & $0.4$\\
+\bottomrule
+\end{tabular}
+\caption{一个判定被复制特征翻转的例子（等先验）。在 $x=(1,1)$ 上，原得分 $s=\log\frac{0.9}{0.3}+\log\frac{0.1}{0.4}=-0.288$，判类 $0$；把 $x^{(1)}$ 复制一列后 $s'=2\log\frac{0.9}{0.3}+\log\frac{0.1}{0.4}=+0.811$，改判类 $1$。}
+\label{tab:dup}
+\end{table}
+
+表 \ref{tab:dup} 给出这一组参数，$x=(1,1)$ 上的得分写在表下的说明里。它说明「偏袒」不是空话：同一组参数、同一个测试点，只因为多了一列重复特征，判定就翻了。
+
+比单个极端特征更常见的是「合谋」：几个相关的弱特征，每个的对数比只有 $0.3$，同向叠加十项就是 $3$。单独看每一项都不足以定案，加起来却过了阈值。相关性让这种叠加失去应有的折扣——十个独立证据不会同时错，所以它们的合计可信度要打折；NB 不折，照单全收。
+
+\begin{add}[离散情形的补足]
+第三讲 §7.4 的补充框只说了一句「同一份信息数两遍」，没有给机制，也没有给判据。这里补上：机制是权重加倍，判据是「去掉一维后看判定是否翻转」。离散情形的数值例子见表 \ref{tab:dup}。
+\end{add}
+
+\subsection{概率的过度自信}
+
+症状很好认：预测概率堆在 $0/1$ 两端，准确率却只有七八成；可靠性曲线呈「两端翘、中间塌」。
+
+机制是两条叠加：连乘把每维的小偏差乘起来（$D$ 越大越明显），相关特征让偏差同向叠加（§6.1），小计数再贡献一批极端的单维比（§4.5）。
+
+把偏差写成公式更清楚。记真实后验的对数比为 $s^{\ast}(\bx)$，NB 的得分为 $s(\bx)$，则
+\begin{equation}
+  s(\bx)=s^{\ast}(\bx)-\Delta(\bx),\qquad
+  \Delta(\bx)=\log\frac{p(\bx\mid1)}{\prod_jp(x^{(j)}\mid1)}
+  -\log\frac{p(\bx\mid0)}{\prod_jp(x^{(j)}\mid0)} .
+  \label{eq:gap}
+\end{equation}
+$\Delta$ 是「被忽略的依赖」的对数比。它依赖 $\bx$——这正是下面那条警告的来源：不是对所有点加同一个常数，所以不是单调压缩。特征越相关、$D$ 越大，$|\Delta|$ 通常越大。
+
+与第四讲 §6.3 的分工：校准方法（Platt、isotonic、Brier）不重复，这里只讲 NB 的偏差是\emph{系统性}过自信，以及后果——凡是用到概率数值的场合（代价敏感决策、阈值随先验调整、模型集成），都不能直接拿它的输出当概率用。代价可以量化：同一个错误，报 $0.99$ 时付出的对数损失是 $-\log0.01\approx4.6$，校准到 $0.9$ 只需要 $-\log0.1\approx2.3$——错一次，罚一倍。
+
+有一处必须写准。第四讲说过「AUC 只看排序」，但这句话不能直接搬过来说「过自信不影响 AUC」：
+
+\begin{warn}[排序不变是有条件的]
+若偏差可以写成对同一 log-odds 的单调压缩（温度缩放那样），排序与 AUC 才不变。而 §6.1 的双重计数是\emph{逐样本}的加性偏置——偏多少取决于这个点两维的取值——不是单调变换，它会改变排序。这正是过自信带来实际损失的途径。
+
+只有「偏差是单调压缩」时，才能说「只要排序、AUC 不变」。
+\end{warn}
+
+所以正确的说法是：过自信的\emph{数值}不影响 AUC 的计算口径（AUC 只用排序），但产生过自信的那套机制同时也在改排序——两件事不能混成一件。
+
+% ============================================================
+%  第 7 节
+% ============================================================
+
+\section{样本效率与稳健性}
+
+上一节说的是「坏在哪里」，这一节说「为什么坏得不彻底」，以及什么条件下会彻底坏掉。
+
+\subsection{学习曲线的交叉}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=11.2cm, height=6.4cm,
+  xmin=1, xmax=5, ymin=0, ymax=0.36,
+  xtick={1,2,3,4,5},
+  xticklabels={$10$,$10^2$,$10^3$,$10^4$,$10^5$},
+  xlabel={样本量 $N$（对数刻度）},
+  ylabel={测试误差},
+  axis lines=left,
+  tick style={draw=steel!60},
+  label style={font=\small,text=steel},
+  tick label style={font=\scriptsize,text=steel},
+  legend style={draw=none,font=\scriptsize,at={(0.98,0.98)},anchor=north east},
+  legend cell align=left,
+]
+\addplot[draw=navy,line width=0.9pt,domain=1:5,samples=120] {0.09+0.06*exp(-x/1.5)};
+\addlegendentry{朴素贝叶斯}
+\addplot[draw=steel,line width=0.9pt,dashed,domain=1:5,samples=120] {0.06+0.25*exp(-(x-1)/1.3)};
+\addlegendentry{逻辑回归}
+\addplot[draw=navy!45,line width=0.45pt,dotted,domain=1:5,samples=2] {0.09};
+\addplot[draw=steel!55,line width=0.45pt,dotted,domain=1:5,samples=2] {0.06};
+\node[font=\scriptsize,text=navy!70,anchor=east] at (axis cs:4.86,0.107) {NB 的渐近误差};
+\node[font=\scriptsize,text=steel,anchor=east] at (axis cs:4.86,0.045) {LR 的渐近误差};
+\end{axis}
+\end{tikzpicture}
+\caption{学习曲线（示意数据，坐标由脚本按设定函数生成）。画的是假设不成立的那一支：NB 早早压到自己的平台，LR 起步慢、平台更低，两线在 $10^3$ 与 $10^4$ 之间交叉。假设成立时 NB 全面占优，没有交叉，不另画。}
+\label{fig:curve}
+\end{figure}
+
+图 \ref{fig:curve} 有两层信息，必须分开说，否则会读成「又快又差」：
+
+\begin{enumerate}[label=\textcolor{navy}{\bfseries(\arabic*)},leftmargin=2.4em]
+  \item \textbf{生成假设成立时}：NB 的渐近误差就是贝叶斯误差；以参数个数 $n$ 计，它只需 $O(\log n)$ 的样本逼近这个值。逻辑回归的渐近误差不会更低（它的线性类未必装得下真后验），却要 $O(n)$ 的样本。
+  \item \textbf{假设不成立时}：NB 的模型类装不下真后验，渐近误差可能反超 LR——平台一高一低，交叉才出现，图 \ref{fig:curve} 画的就是这一支。
+\end{enumerate}
+
+第一层是「省样本」，第二层是「平台高」。两句话各自带条件，不能合并成「NB 又快又差」。
+
+\subsection{零一损失下的最优性}
+
+「最优」有三种，必须分开：
+
+\begin{itemize}
+  \item \textbf{密度最优}：$p(\bx\mid y)$ 估对了。NB 的独立性只保证这一种（且要求每一维的参数族也对）。
+  \item \textbf{二次损失最优}：后验概率估对了。这一种以独立成立为前提。
+  \item \textbf{零一损失最优}：$\argmax$ 对了。这一种可以单独成立——只要真实后验最大的类，在 NB 的估计里仍然最大。
+\end{itemize}
+
+\begin{prop}[Domingos--Pazzani，只陈述]
+在零一损失下，使朴素贝叶斯最优的分布集合远大于使它的概率估计二次最优的集合；后者是前者的二阶无穷小部分。特别地，对合取、析取两类概念，即使属性依赖很强，NB 仍是零一最优的。
+\end{prop}
+
+这条结论正好解释 §6.2 的现象：概率可以错得很离谱，判定却对。原因不是「错得刚好抵消」，而是分类只问 $\argmax$——一个比概率弱得多的要求。原文的措辞是 "a second-order infinitesimal fraction"，说的是两个区域的大小关系，不是「差不多」。
+
+合取是个好例子。取 $y=x^{(1)}\wedge x^{(2)}$（带一点标注噪声）。真实后验不是两维边缘的乘积：看到 $x^{(1)}=0$ 就足以断定 $y=0$，不必再看 $x^{(2)}$。NB 仍按乘积算，但它的排序与真实后验一致——在 $(1,1)$ 上两类的得分差最大，在其余格子上证据同向减弱。依赖改变了概率的数值，没有改变 $\argmax$，这正是上面那条命题说的情形。
+
+边界也要说清：这个结论对\emph{零一损失}成立。换成代价敏感损失，或需要概率数值的决策（阈值随先验调整、模型集成），§6.2 的偏差就直接进入损失，稳健性不再免费。
+
+\subsection{适用条件}
+
+把前面几节收成一张清单。
+
+\begin{itemize}
+  \item \textbf{适用}：$D$ 大而 $N$ 小；离散或计数特征；需要极快（训练就是数一遍）；文本基线（$D\sim10^4$–$10^6$）；缺失多（§2.2 的删因子是免费的）。
+  \item \textbf{不适用}：需要校准概率；维间强相关且样本充足（此时 QDA、逻辑回归、树模型更合适）；离散高维且大量空格——平滑能救零概率，救不了被先验主导的估计（§4.4）。
+\end{itemize}
+
+三条诊断：一、画可靠性曲线，看概率是否成比例地偏离对角线；二、算类内两两相关，相关性高的成对特征考虑合并或删一个；三、扫 $\alpha$ 看测试误差是否敏感——敏感说明空格多，模型在靠先验撑。
+
+补救的三条路：删掉相关特征、给特征加权（等价于把该维的对数比乘一个系数）、放松结构（TAN 在星形上多留一条树边）。三条都试过，再考虑换模型。
+
+这解释了一条经验：NB 对\emph{无关}特征相当宽容。一个与类别无关的维，两类的 $\hat\theta$ 几乎相同，对数比接近 $0$，投的是弃权票——不帮忙，也不至于帮倒忙。真正有害的是相关的维（重复计票），不是没用的维。
+
+第三讲 §8.3 与第四讲 §7.2 已经各有一张对照表，这里不重复。NB 独有的判据只有三条：参数是计数、可以边缘化缺失、概率不可校准。
+
+\begin{keybox}[选型的判据]
+不是「假设是否成立」，而是「假设错得是否影响 $\argmax$」。这句话是全讲的收束：独立性几乎总是不成立的，但如果它的后果只是把概率推向两端、而不改变排序，零一损失就看不见它。
+\end{keybox}
+
+% ============================================================
+%  第 8 节
+% ============================================================
+
+\section{小结}
+
+\subsection{五个要点}
+
+\begin{enumerate}[label=\textcolor{navy}{\bfseries\arabic*.},leftmargin=2.3em,itemsep=0.55em]
+  \item \textbf{联合分布估不动，是因为参数按 $V_1\times\cdots\times V_D$ 长。}$D=30$ 的二值特征，每类要十亿个参数；NB 用「给定类后相互独立」把它压到 $K\sum_jV_j$。
+  \item \textbf{似然按维分解，解就是计数。}三组参数互不牵连，闭式解只依赖 $N_c$ 与 $N_{jvc}$，没有优化、没有迭代。
+  \item \textbf{零计数是否决性的，但否决的是「这一类在这个点上」。}「整类连坐」是空格遍地的涌现效果，不是机制。
+  \item \textbf{拉普拉斯平滑是 Dirichlet 后验均值，不是 MAP。}$\alpha=1$ 时 MAP 恰好退回 MLE；平滑只挡零、不挡小。
+  \item \textbf{概率会过度自信，判定却常常稳健。}两者分离的边界是零一损失；一旦要概率数值，稳健性就不再免费。
+\end{enumerate}
+
+\subsection{知识结构}
+
+\begin{figure}[htbp]
+\centering
+\begingroup
+\providecommand{\ttl}{\bfseries\sffamily\color{navy}}
+\providecommand{\fml}{\footnotesize\color{navy!88}}
+\begin{tikzpicture}[
+  box/.style={draw=navy!55,fill=navy!3,minimum width=2.45cm,minimum height=1.95cm,
+    align=center,inner sep=2pt,sharp corners,line width=0.5pt},
+  ar/.style={->,navy!60,line width=0.6pt},
+]
+\node[box] (b1) at (1.55,0) {{\ttl 假设}\\[2pt]{\fml 各维给定 $y$ 独立}\\[0pt]{\fml 参数 $K\sum_jV_j$}};
+\node[box] (b2) at (4.65,0) {{\ttl 估计}\\[2pt]{\fml 似然按维分解}\\[0pt]{\fml 计数 = MLE}};
+\node[box] (b3) at (7.75,0) {{\ttl 平滑}\\[2pt]{\fml Dirichlet 后验均值}\\[0pt]{\fml $\alpha$ 是伪计数}};
+\node[box] (b4) at (10.85,0) {{\ttl 判定}\\[2pt]{\fml 对数域累加}\\[0pt]{\fml 编码空间线性}};
+\node[box] (b5) at (13.95,0) {{\ttl 边界}\\[2pt]{\fml 相关 $\Rightarrow$ 过自信}\\[0pt]{\fml 0-1 损失仍可稳健}};
+\draw[ar] (b1) -- (b2);
+\draw[ar] (b2) -- (b3);
+\draw[ar] (b3) -- (b4);
+\draw[ar] (b4) -- (b5);
+\draw[<->,navy!65,line width=0.65pt,densely dashed] (b3.north) to[bend right=55] (b2.north);
+\draw[<->,navy!65,line width=0.65pt,densely dashed] (b5.south) to[bend left=55] (b4.south);
+\node[draw=navy!25,fill=white,align=center,font=\footnotesize,inner sep=5pt]
+  at (7.75,-2.55)
+  {零计数 $\to$ 平滑 $\to$ 改估计 \quad $\cdot$ \quad 相关特征 $\to$ 过自信 $\to$ 改判定};
+\end{tikzpicture}
+\endgroup
+\caption{本讲的知识地图。横向是一条流水线：假设、估计、平滑、判定、边界。两条虚线是两次回头：平滑会回头改估计，相关特征会回头改判定——所以「假设坏了」不是一处坏，而是上下游同时动。}
+\label{fig:map}
+\end{figure}
+
+\subsection{后续内容}
+
+这一讲停在「离散特征 + 独立假设」上。往下有四条路：
+
+\begin{itemize}
+  \item \textbf{泛化与正则}（下一讲）。NB 的参数少，是「用假设换样本」的极端例子；下一讲把这件事写成泛化误差上界，届时「参数少」与「假设强」会被拆成两个不同的量。
+  \item \textbf{结构学习}。把星形图放松成树或一般的 DAG，就是 TAN 与 AODE。它们比 NB 多留几条边，参数多一点，偏差小一点——正好是 §1.2 那张谱系往中间走。
+  \item \textbf{隐变量与混合模型}。NB 的每一类一个分布，可以换成每类若干个成分（GMM 判别）。那是把「一维的独立性」换成「成分的独立性」，骨架不变。
+  \item \textbf{文本的事件模型}。多项与伯努利两种似然各有各的归一化，取舍见 McCallum \& Nigam (1998)。
+\end{itemize}
+
+% ============================================================
+%  习题
+% ============================================================
+
+\clearpage
+\section*{习题}
+\addcontentsline{toc}{section}{习题}
+\markboth{习题}{}
+\setlength{\parskip}{0.62em}
+
+\subsection*{A 组 · 基础}
+
+\noindent\textbf{A1.} 下表是 6 个样本、2 类、2 个二值特征的数据。写出 $\hat\phi_c$ 与 $\hat\theta_{jvc}$（不做平滑），并算 $x=(1,0)$ 的 $s_c$ 与判定。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 样本 & 1 & 2 & 3 & 4 & 5 & 6\\
+\midrule
+$x^{(1)}$ & 1 & 1 & 1 & 0 & 0 & 0\\
+$x^{(2)}$ & 1 & 1 & 0 & 1 & 0 & 0\\
+$y$ & 1 & 1 & 1 & 0 & 0 & 0\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{A2.} $D=15$、$V=3$、$K=4$：分别算全联合与朴素的参数个数（都含先验），并解释比值的来源。
+
+\noindent\textbf{A3.} 验证平滑估计的归一性 $\sum_v\hat\theta_{jvc}=1$，并说明为什么分母是 $N_c+\alpha V_j$ 而不是 $N_c+\alpha$。
+
+\noindent\textbf{A4.} 写出 one-hot 编码下的权重与截距，说明它对应第四讲里哪个模型的哪个参数。
+
+\subsection*{B 组 · 提高}
+
+\noindent\textbf{B1.} 证明对数似然按维分解，并说明为什么参数块互不牵连。对照第三讲 §2.3，指出这里为什么不需要剖面似然。
+
+\noindent\textbf{B2.} 证明 $\alpha=1$ 时 Dirichlet 的 MAP 等于 MLE、后验均值等于拉普拉斯平滑；说明 $\alpha<1$ 时 MAP 退化到顶点。
+
+\noindent\textbf{B3.} 构造一个两类两特征的例子，使 NB 判错而贝叶斯最优判对。提示：异或结构，两维在两类里都是 $0.5/0.5$，似然比恒为 $1$。
+
+\noindent\textbf{B4.} 给一个 $D\ge3$ 的例子，说明逐对条件独立推不出相互独立；并说明为什么朴素贝叶斯的乘积式要求的是后者。
+
+\subsection*{C 组 · 动手}
+
+\noindent\textbf{C1.} 不调库实现离散 NB（含 $\alpha$），与 \texttt{sklearn} 的 \texttt{CategoricalNB} 比 \emph{log 概率}，对齐到 $10^{-8}$。直接比概率时，小概率达不到这个精度。
+
+\noindent\textbf{C2.} 同一份数据上画 NB 与逻辑回归的学习曲线，标出交叉点，并解释交叉点位置与 $D/N$ 的关系。
+
+\noindent\textbf{C3.} 在文本数据（如 20 newsgroups 的子集）上比较 \texttt{MultinomialNB} 与 \texttt{BernoulliNB}，报告 $\alpha$ 从 $10^{-3}$ 到 $10$ 的测试误差。
+
+\subsection*{提示}
+
+\begin{itemize}[itemsep=0.2em]
+  \item \textbf{A1}：$N_1=N_0=3$，$\hat\phi_1=\hat\phi_0=1/2$。类 $1$ 两维都见过（$x^{(2)}=0$ 只出现一次），类 $0$ 在 $x^{(1)}=1$ 上计数为零——这一维把类 $0$ 否决，判定为类 $1$。加 $\alpha=1$ 后类 $0$ 的得分为 $-2.81$、类 $1$ 为 $-1.83$，结论不变。
+  \item \textbf{A2}：全联合 $4(3^{15}-1)+3=57\,395\,627$，朴素 $4\times15\times2+3=123$，比值约 $4.7\times10^{5}$。
+  \item \textbf{A3}：求和得 $(N_c+\alpha V_j)/(N_c+\alpha V_j)$；若分母是 $N_c+\alpha$，求和为 $(N_c+\alpha V_j)/(N_c+\alpha)\ne1$。
+  \item \textbf{A4}：$w_{c,(j,v)}=\log\theta_{jvc}$，$b_c=\log\phi_c$；对应逻辑回归在 one-hot 特征上的系数与截距。
+  \item \textbf{B2}：Dirichlet$(\alpha)$ 的众数是 $(N_v+\alpha-1)/(N_c+V(\alpha-1))$；$\alpha=1$ 时退化为 $N_v/N_c$，$\alpha<1$ 时众数落在顶点。
+  \item \textbf{B3}：两类都是 $(0.5,0.5)$，四个格子的得分相同，NB 只能猜；而真实后验在 $(0,1)$ 与 $(1,0)$ 上为 $1$。
+  \item \textbf{B4}：$x^{(3)}=x^{(1)}\oplus x^{(2)}$，验三个两两联合分布，再看三阶联合是否等于乘积。
+  \item \textbf{C2}：交叉点大致出现在「LR 的参数个数所需样本量」与「NB 的平台差」相抵的位置；$D/N$ 越大，交叉越靠右。
+\end{itemize}
+
+% ============================================================
+%  附录
+% ============================================================
+
+\appendix
+\renewcommand{\thesection}{\Alph{section}}
+
+\section{公式速查}
+
+\subsection*{A.1　参数估计}
+
+\begin{align}
+  \hat\phi_c&=\frac{N_c}{N},&
+  \hat\theta_{jvc}&=\frac{N_{jvc}}{N_c},\\
+  \hat\mu_{jc}&=\frac{1}{N_c}\sum_{i:y_i=c}x_i^{(j)},&
+  \hat\sigma_{jc}^2&=\frac{1}{N_c}\sum_{i:y_i=c}\bigl(x_i^{(j)}-\hat\mu_{jc}\bigr)^2 .
+\end{align}
+
+\subsection*{A.2　平滑}
+
+\begin{align}
+  \hat\theta_{jvc}&=\frac{N_{jvc}+\alpha}{N_c+\alpha V_j},&
+  \sum_v\hat\theta_{jvc}&=1,\\
+  \text{后验均值}&=\frac{N_{jvc}+\alpha}{N_c+\alpha V_j},&
+  \text{MAP}&=\frac{N_{jvc}+\alpha-1}{N_c+V_j(\alpha-1)} .
+\end{align}
+
+\subsection*{A.3　判定}
+
+\begin{align}
+  \hat y&=\argmax_c\ \hat\phi_c\prod_{j=1}^{D}\hat p\bigl(x^{(j)}\mid c\bigr),\\
+  s_c&=\log\hat\phi_c+\sum_{j=1}^{D}\log\hat p\bigl(x^{(j)}\mid c\bigr),\\
+  s_c&=\log\phi_c+\sum_{j}\sum_{v}\mathbb{I}\bigl[x^{(j)}=v\bigr]\log\theta_{jvc}
+  \quad(\text{one-hot}),\\
+  s_c&=\log\phi_c+\sum_{v}n_v\log\theta_{vc}\quad(\text{多项}).
+\end{align}
+
+\subsection*{A.4　参数量}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 结构 & \tabhead 每类 & \tabhead 全部（含先验）\\
+\midrule
+全联合 & $V^D-1$ & $K(V^D-1)+(K-1)$\\
+朴素（离散） & $\sum_j(V_j-1)$ & $K\sum_j(V_j-1)+(K-1)$\\
+朴素（连续） & $2D$ & $2KD+(K-1)$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+连续侧与 GDA 的差：$D\bigl(K-\frac{D+1}2\bigr)$，分界 $K=\frac{D+1}2$。
+
+\subsection*{A.5　记号对照}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\rowcolor{navy!7}
+\tabhead 本讲 & \tabhead 笔记 & \tabhead 说明\\
+\midrule
+$K$ & $C$ & 类别数\\
+$D$ & $p$ & 特征维数\\
+$V_j$ & $K_j$ & 第 $j$ 维取值个数\\
+$\theta_{jvc}$ & $\theta_{j,v,c}$ & 条件概率参数\\
+$\alpha$ & 同 & 伪计数（不是第三讲 §5.3 的收缩系数）\\
+$s_c$ & --- & 类得分\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{延伸阅读}
+
+\begin{enumerate}[label={[\arabic*]},leftmargin=2.6em,itemsep=0.7em]
+  \item P. Domingos, M. Pazzani. On the optimality of the simple Bayesian classifier under zero-one loss. \emph{Machine Learning}, 29(2--3):103--130, 1997.\\[1pt]
+  {\footnotesize\color{steel}§7.2 两条结论的出处。「二阶无穷小」是原文摘要的原话，第 4 节有零一最优与二次最优两个区域的比较。}
+
+  \item A. Y. Ng, M. I. Jordan. On discriminative vs.\ generative classifiers: a comparison of logistic regression and naive Bayes. \emph{NIPS}, 2001.\\[1pt]
+  {\footnotesize\color{steel}第四讲已引过；那里看的是逻辑回归一侧，这里看 NB 一侧。$O(\log n)$ 与 $O(n)$ 的样本复杂度是文中的主要结论。}
+
+  \item D. Lewis. Naive (Bayes) at forty: the independence assumption in information retrieval. \emph{ECML}, 1998.\\[1pt]
+  {\footnotesize\color{steel}独立性假设在文本检索里到底造成多大损失，这篇给了经验答案。适合与 §6 对着读。}
+
+  \item A. McCallum, K. Nigam. A comparison of event models for naive Bayes text classification. \emph{AAAI Workshop on Learning for Text Categorization}, 1998.\\[1pt]
+  {\footnotesize\color{steel}多项与伯努利两个事件模型的系统比较，§3.4 那段补充的来源。}
+
+  \item T. Hastie, R. Tibshirani, J. Friedman. \emph{The Elements of Statistical Learning}, 2nd ed., §6.6. Springer, 2009.\\[1pt]
+  {\footnotesize\color{steel}教材处理：离散与连续两种情形、以及「为什么假设错了还能用」的简短讨论。}
+
+  \item C. Manning, P. Raghavan, H. Schütze. \emph{Introduction to Information Retrieval}, ch.13. Cambridge University Press, 2008.\\[1pt]
+  {\footnotesize\color{steel}文本分类一章，NB 的平滑、特征选择与评价指标都在这里，工程细节比教材多。}
+
+  \item \texttt{scikit-learn} 文档：\texttt{naive\_bayes}。\\[1pt]
+  {\footnotesize\color{steel}\texttt{alpha}、\texttt{var\_smoothing} 与三种实现（Gaussian / Multinomial / Categorical）的确切含义。§4.4 的实现提醒以此为准。}
+\end{enumerate}
+
+\vspace{1.0em}
+\begin{flushright}
+{\color{navy!25}\rule{3.2cm}{0.5pt}}\\[5pt]
+{\footnotesize\color{steel}第五讲 · 完}
+\end{flushright}
+
+\end{document}
